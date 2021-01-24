@@ -12,12 +12,12 @@
 
 void bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
-	ROS_INFO("hello github!");
+
 }
 
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
-	//fill with your code
+	
 }
 
 int main(int argc, char **argv)
