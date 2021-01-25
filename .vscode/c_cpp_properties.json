@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/mie443_contest1/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
