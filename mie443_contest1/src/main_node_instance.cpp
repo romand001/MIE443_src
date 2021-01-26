@@ -11,11 +11,6 @@ int main(int argc, char **argv)
 
     while(ros::ok() && node.secondsElapsed <= 900) {
         ros::spinOnce();
-        //fill with your code
-
-        // vel.angular.z = c1->angular;
-        // vel.linear.x = c1->linear;
-        // vel_pub.publish(vel);
     }
 
     return 0;
