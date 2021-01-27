@@ -32,9 +32,21 @@ void bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 
 void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
+    minLaserDist = std::numeric_limits<float>::infinity();
 	nLasers=(msg->angle_max-msg->angle_min) /msg->angle_increment;
     desiredNLasers=DEG2RAD(desiredAngle)/msg->angle_increment;
     ROS_INFO("Size of laser scan array: %iand size of offset: %i", nLasers, desiredNLasers);
+
+    if(desiredAngle*M_PI/180 <msg->angle_max && -desiredAngle*M_PI/180 >msg->angle_min) {
+        for(uint32_t laser_idx = nLasers/2 - desiredNLasers;laser_idx < nLasers/2 + desiredNLasers; ++ laser_idx){
+            minLaserDist=std::min(minLaserDist,msg->ranges[laser_idx]);
+            }
+        }
+            else{
+                for(uint32_t laser_idx=0;laser_idx<nLasers;++laser_idx) {
+                    minLaserDist=std::min(minLaserDist,msg->ranges[laser_idx]);
+                    }
+                }
 }
 
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -77,7 +89,7 @@ int main(int argc, char **argv)
         // ROS_INFO("bumperRIGHT: %d", bumper[2]);
 
         // Check if any of the bumpers were pressed.
-        /* bool any_bumper_pressed = false;
+        bool any_bumper_pressed = false;
         for(uint32_t b_idx = 0; b_idx < N_BUMPER; ++b_idx) {
             any_bumper_pressed |= (bumper[b_idx] ==kobuki_msgs::BumperEvent::PRESSED);
             }
@@ -91,11 +103,22 @@ int main(int argc, char **argv)
             angular =M_PI /6;
             linear =0.0;
         }
+        else if(minLaserDist>1. &&! any_bumper_pressed) {
+            linear =0.1;
+            if(yaw <17/36*M_PI ||posX>0.6) {
+                angular =M_PI /12.;
+            }
+            else if(yaw <19/36*M_PI ||posX<0.4) {
+                angular =-M_PI /12.;
+            }
+            else{
+                angular =0;
+            }
+        }
         else{
             angular =0.0;
             linear =0.0;
-            break;
-        }*/ 
+        } 
 
         vel.angular.z = angular;
         vel.linear.x = linear;
