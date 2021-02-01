@@ -4,6 +4,7 @@
 #include <kobuki_msgs/BumperEvent.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <tf/transform_datatypes.h>
 
 #include <boost/thread.hpp>
@@ -34,6 +35,7 @@ private:
 
     ros::Subscriber bumper_sub_;
     ros::Subscriber laser_sub_;
+    ros::Subscriber map_sub_;
     ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
 
@@ -63,6 +65,8 @@ public:
     void bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg);
 
     void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg);
+
+    void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 

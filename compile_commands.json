@@ -43,5 +43,10 @@
   "directory": "/mnt/build/mie443_contest1",
   "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"mie443_contest1\\\" -Dmain_class_node_EXPORTS -I/mnt/src/mie443_contest1/include -I/opt/ros/kinetic/include/opencv-3.3.1-dev -I/opt/ros/kinetic/include/opencv-3.3.1-dev/opencv -I/opt/ros/kinetic/include -I/opt/ros/kinetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp  -fPIC   -std=c++11 -o CMakeFiles/main_class_node.dir/src/main_node_class.cpp.o -c /mnt/src/mie443_contest1/src/main_node_class.cpp",
   "file": "/mnt/src/mie443_contest1/src/main_node_class.cpp"
+},
+{
+  "directory": "/mnt/build/mie443_contest1",
+  "command": "/usr/bin/c++   -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"mie443_contest1\\\" -Dmap_class_EXPORTS -I/mnt/src/mie443_contest1/include -I/opt/ros/kinetic/include/opencv-3.3.1-dev -I/opt/ros/kinetic/include/opencv-3.3.1-dev/opencv -I/opt/ros/kinetic/include -I/opt/ros/kinetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp  -fPIC   -std=c++11 -o CMakeFiles/map_class.dir/src/map_class.cpp.o -c /mnt/src/mie443_contest1/src/map_class.cpp",
+  "file": "/mnt/src/mie443_contest1/src/map_class.cpp"
 }
 ]

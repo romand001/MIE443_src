@@ -1,4 +1,5 @@
 #include "main_node_class.hpp"
+#include "map_class.hpp"
 
 namespace mainSpace {
 
@@ -16,6 +17,7 @@ void MainNodeClass::init()
 
     bumper_sub_ = nh_.subscribe("mobile_base/events/bumper", 10, &MainNodeClass::bumperCallback, this);
     laser_sub_ = nh_.subscribe("scan", 10, &MainNodeClass::laserCallback, this);
+    map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
     odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
 
@@ -27,15 +29,20 @@ void MainNodeClass::init()
 
 void MainNodeClass::bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
+    // this code runs whenever new bumper collision data is published to the 
+    //      mobile_base/events/bumper topic
+    // updating the private bumper_ variable should be all that is needed here
     bumper_[msg->bumper] = msg->state;
 }
 
 void MainNodeClass::laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
+    // this code runs whenever new laser scan data is published to the scan topic
+    // try to turn the scan array into data that the control code can easily use
     minLaserDist_ = std::numeric_limits<float>::infinity();
 	int32_t nLasers = (msg->angle_max - msg->angle_min) / msg->angle_increment;
     int32_t desiredNLasers = DEG2RAD(DESIRED_ANGLE) / msg->angle_increment;
-    ROS_INFO("Size of laser scan array: %iand size of offset: %i", nLasers, desiredNLasers);
+    // ROS_INFO("Size of laser scan array: %iand size of offset: %i", nLasers, desiredNLasers);
 
     if (DEG2RAD(DESIRED_ANGLE) < msg->angle_max && -DEG2RAD(DESIRED_ANGLE) > msg->angle_min) {
         for (uint32_t laser_idx = nLasers/2 - desiredNLasers; laser_idx < nLasers/2 + desiredNLasers; laser_idx++) {
@@ -49,17 +56,29 @@ void MainNodeClass::laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
                 }
 }
 
+void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
+    // this code runs whenever a new occupancy grid map is published to the map topic
+    // suggestion: try to update a private variable indicating where to go next
+    // nav_msgs::MapMetaData info = msg->info;
+    mainSpace::Map map(msg->info.width, msg->info.height, msg->data);
+    map.info();
+
+}
+
 void MainNodeClass::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
 	posX_ = msg->pose.pose.position.x;
     posY_ = msg->pose.pose.position.y;
     yaw_ = tf::getYaw(msg->pose.pose.orientation);
     
-    ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
+    // ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
 }
 
 void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 {
+    // this code runs at a regular time interval defined in the timer_ intialization
+    // this is probably where we put the control code that moves the robot
     bool any_bumper_pressed = false;
     for (uint32_t b_idx = 0; b_idx < N_BUMPER; b_idx++) {
         any_bumper_pressed |= (bumper_[b_idx] == kobuki_msgs::BumperEvent::PRESSED);
@@ -95,7 +114,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);
 
-    //update the timer
+    //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
