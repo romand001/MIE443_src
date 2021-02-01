@@ -2,9 +2,10 @@
 
 namespace mainSpace {
 
+// constructor for the Tile struct, sets the x and y values
 Map::Tile::Tile(uint32_t xt, uint32_t yt) : x(xt), y(yt) {}
 
-// constructor, just set width and height
+// Map class constructor, just set width, height, and data
 Map::Map(const uint32_t width, const uint32_t height, const std::vector<int8_t> data)
     :width_(width),
     height_(height),
@@ -14,25 +15,18 @@ Map::Map(const uint32_t width, const uint32_t height, const std::vector<int8_t> 
     ROS_INFO("map object created with w: %u, h: %u", width_, height_);
 }
 
-// fill the map with data from OccupancyGrid
-// void Map::populate(const std::vector<int8> data)
-// {
-//     for (int x=0; x<width_; x++) {
-//         std::vector<int8_t> col;
-//         for (int y=0; y<height_; y++) {
-//             col.push_back(data[x + y*width_]);
-//         }
-//         grid_.push_back(col);
-//     }
-// }
-
 // iterate over occupancy grid and print how many of each number occurs
+// useful for figuring out what's going on without printing thousands of numbers
+// note: std::map has nothing to do with the robot map, it is just a data structure 
 void Map::info()
 {
+    // map (dictionary-like data structure) of <data number: how many times it occurs>
     std::map<int8_t, uint32_t> gridVals;
+    // iterate through data and increment the value that it matches in gridVals
     for (int i = 0; i < width_ * height_; i++) {
         gridVals[data_[i]]++;
     }
+    // iterate through the map data structure and print out with nice formatting
     std::map<int8_t, uint32_t>::iterator it;
     for (it = gridVals.begin(); it != gridVals.end(); it++) {
         std::cout << (int32_t)it->first << ": " << it->second << std::endl;
@@ -43,25 +37,16 @@ void Map::info()
 // you probably should not call this function
 void Map::print()
 {
-    for (int y=0; y<height_; y++) {
-        for (int x=0; x<width_; x++) {
-            std::cout << grid_[x][y] << " ";
-        }
-        std::cout << std::endl;
+    for (int i=0; i<width_*height_; i++) {
+        std::cout << data_[i] << " ";
+        if (i % width_ == 0) std::cout << std::endl;
     }
 }
-
-// // get occupancy value at specified coordinates
-// // called by Tile constructor
-// int8_t Map::getOccupancy(uint32_t x, uint32_t y)
-// {
-//     return data_[x + y*width_];
-// }
 
 // get the adjacent tiles of the given tile
 std::vector<Map::Tile> Map::getAdjacent(Map::Tile s)
 {
-
+    // vector for storing the adjacent tiles
     std::vector<Map::Tile> adj;
 
     // get up tile
@@ -102,22 +87,29 @@ void Map::BFS(float x, float y)
     // queue to store tiles that need to be checked
     std::queue<Map::Tile> queue;
 
+    // create starting tile, set its value, set it to visited, push it to the queue
     Map::Tile s((uint32_t)x, (uint32_t)y);
     s.occ = data_[s.x + s.y*width_];
     visited[x][y] = true;
     queue.push(s);
 
+    // will set this to true when the first frontier is found, exits the while loop
     bool foundNearest = false;
 
+    // process every tile in the queue (will keep going until not tiles left or we exit)
     while (queue.size() != 0 && !foundNearest) {
+        // set s to the first queue item and then pop it from the queue
         s = queue.front();
         queue.pop();
 
-        // check here if Tile s is a frontier, set foundNearest=true
+        // check here if Tile s is a frontier, set foundNearest=true to exit
+        //
+        //
 
-
-        std::vector<Map::Tile> adj;
+        // get adjacent tiles of s and iterate over them
+        std::vector<Map::Tile> adj = getAdjacent(s);
         for (auto t: adj) {
+            // if tile at these coords has not been visited, add to the queue and set to visited
             if (!visited[t.x][t.y]) {
                 visited[t.x][t.y] = true;
                 queue.push(t);
