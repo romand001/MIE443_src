@@ -87,7 +87,7 @@ void Map::BFS(float x, float y)
     // queue to store tiles that need to be checked
     std::queue<Map::Tile> queue;
 
-    // create starting tile, set its value, set it to visited, push it to the queue
+    // create starting tile, set its occupancy value, set it to visited, push it to the queue
     Map::Tile s((uint32_t)x, (uint32_t)y);
     s.occ = data_[s.x + s.y*width_];
     visited[x][y] = true;
