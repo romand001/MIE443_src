@@ -14,6 +14,7 @@ void MainNodeClass::init()
 {
     angular_ = linear_ = 0.0;
     posX_ = posY_ = yaw_ = 0.0;
+    ROS_INFO("hello");
 
     bumper_sub_ = nh_.subscribe("mobile_base/events/bumper", 10, &MainNodeClass::bumperCallback, this);
     laser_sub_ = nh_.subscribe("scan", 10, &MainNodeClass::laserCallback, this);
