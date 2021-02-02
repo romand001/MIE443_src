@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <stack>
 
 namespace mainSpace {
 
@@ -29,7 +30,9 @@ public:
     void print();
     // int8_t getOccupancy(uint32_t x, uint32_t y);
     std::vector<Tile> getAdjacent(Tile s);
-    Tile BFS(float x, float y);
+    // Tile BFS(float x, float y);
+    uint32_t* closestFrontier(float x, float y);
+    std::vector<std::vector<bool>> frontierScan();
 
 };
 

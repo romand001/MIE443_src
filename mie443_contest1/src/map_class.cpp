@@ -43,41 +43,71 @@ void Map::print()
     }
 }
 
-// get the adjacent tiles of the given tile
+// get the adjacent tiles of the given tile (8-connected neighbours)
 std::vector<Map::Tile> Map::getAdjacent(Map::Tile s)
 {
     // vector for storing the adjacent tiles
     std::vector<Map::Tile> adj;
 
-    // get up tile
     if (s.y != 0) {
+        // add up tile
         Map::Tile u(s.x, s.y-1);
         u.occ = data_[u.x + u.y*width_];
         adj.push_back(u);
+        // add up+left tile
+        if (s.x != 0) {
+            Map::Tile ul(s.x-1, s.y-1);
+            ul.occ = data_[ul.x + ul.y*width_];
+            adj.push_back(ul);
+        }
+        // add up+right tile
+        if (s.x != width_-1) {
+            Map::Tile ur(s.x+1, s.y-1);
+            ur.occ = data_[ur.x + ur.y*width_];
+            adj.push_back(ur);
+        }
     }
-    // get down tile
+    
     if (s.y != height_-1) {
+        // add down tile
         Map::Tile d(s.x, s.y+1);
         d.occ = data_[d.x + d.y*width_];
         adj.push_back(d);
+        // add down+left tile
+        if (s.x != 0) {
+            Map::Tile dl(s.x-1, s.y+1);
+            dl.occ = data_[dl.x + dl.y*width_];
+            adj.push_back(dl);
+        }
+        // add down+right tile
+        if (s.x != width_-1) {
+            Map::Tile dr(s.x+1, s.y+1);
+            dr.occ = data_[dr.x + dr.y*width_];
+            adj.push_back(dr);
+        }
     }
-    // get left tile
+
     if (s.x != 0) {
+        // add left tile
         Map::Tile l(s.x-1, s.y);
         l.occ = data_[l.x + l.y*width_];
         adj.push_back(l);
     }
-    // get right tile
     if (s.x != width_-1) {
+        // add right tile
         Map::Tile r(s.x-1, s.y);
         r.occ = data_[r.x + r.y*width_];
         adj.push_back(r);
     }
 }
 
-// perform Breadth-First-Search starting at x and y (looking for closest frontier)
-Map::Tile Map::BFS(float x, float y)
-{
+// find the closest frontier to the given x and y coordinates
+uint32_t* Map::closestFrontier(float x, float y) {
+
+    //////////////////////////////////////////////////////
+    //                  BFS Algorithm                   //
+    //////////////////////////////////////////////////////
+
     // 2D vector of booleans to keep track of visited tiles
     std::vector<std::vector<bool>> visited(
         width_,
@@ -93,36 +123,138 @@ Map::Tile Map::BFS(float x, float y)
     visited[x][y] = true;
     queue.push(s);
 
-    // process every tile in the queue (will keep going until not tiles left or we exit)
-    while (queue.size() != 0) {
+    bool foundFirst = false; 
+
+    // process every tile in the queue or until a frontier is found
+    while (queue.size() != 0 && !foundFirst) {
         // set s to the first queue item and then pop it from the queue
         s = queue.front();
         queue.pop();
 
         // get tiles adjacent to s tile
         std::vector<Map::Tile> adj = getAdjacent(s);
-
-        // save s occupancy into variable
-        int8_t occ = s.occ;
         
         // iterate over its adjacent tiles
-        for (auto t: adj) {
-            
-            // if tile s is an open space and it as an adjacent unexplored tile
-            if (occ == 0 && t.occ == -1) return s;
-
+        for (auto a: adj) {
+            // if tile s is an open space and it has an adjacent unexplored tile
+            // this means that s belongs to a frontier cluster
+            if (s.occ == 0 && a.occ == -1) {
+                foundFirst = true;
+                break;
+            }
             // if tile at these coords has not been visited, add to the queue and set to visited
-            if (!visited[t.x][t.y]) {
-                visited[t.x][t.y] = true;
-                queue.push(t);
+            if (!visited[a.x][a.y]) {
+                visited[a.x][a.y] = true;
+                queue.push(a);
             }
 
         }
 
     }
 
+    //////////////////////////////////////////////////////
+    //              Border Detection (DFS)              //
+    //////////////////////////////////////////////////////
+
+    // store traversed tiles in a vector
+    std::vector<Map::Tile> border;
+
+    // vector for keeping track of visits efficiently
+    // indexed the same as OccupancyGrid data
+    std::vector<bool> visitedTiles(width_*height_, false);
+
+    // stack for determining traversal order
+    std::stack<Map::Tile> stack;
+
+    // push starting frontier tile to stack
+    stack.push(s);
+
+    bool reachedEnd = false;
+    // traverse non-visited frontier tiles until none are left
+    // we begin at the frontier tile we found above (s)
+    while (!stack.empty()) {
+
+        // grab current tile from stack and pop it
+        s = stack.top();
+        stack.pop();
+
+        border.push_back(s);
+
+        // get adjacent tiles
+        std::vector<Map::Tile> adj = getAdjacent(s);
+
+        bool hasNeighbours = false;
+        // iterate over adjacent tiles
+        for (auto a: adj) {
+            // if adjacent is a frontier and has not been visited
+            if (s.occ == 0 && a.occ == -1 && 
+                    !visitedTiles[a.x+a.y*width_]) {
+                // set visited, push to stack
+                visitedTiles[a.x+a.y*width_] = true;
+                stack.push(a);
+                hasNeighbours = true;
+                break;
+            }
+        }
+        if (!hasNeighbours) break;
+
+    }
+
+    //////////////////////////////////////////////////////
+    //                  Cluster Center                  //
+    //////////////////////////////////////////////////////
+    uint64_t xSum = 0; uint64_t ySum = 0;
+    for (auto b: border) {
+        xSum += b.x;
+        ySum += b.y;
+    }
+
+    static uint32_t coords[2] = {(uint32_t)(xSum/border.size()), (uint32_t)(ySum/border.size())};
+    return coords;
 
 
+}
+
+// scans entire map and locates frontiers (BFS is probably better than this)
+std::vector<std::vector<bool>> Map::frontierScan()
+{
+    // create map of frontiers
+    std::vector<std::vector<bool>> frontierMap(
+        width_,
+        std::vector<bool>(height_, false)
+    );
+
+    // iterate over tiles (width and height)
+    for (int x=0; x<width_; x++) {
+        for (int y=0; y<height_; y++) {
+
+            // create Tile object
+            Map::Tile tile((uint32_t)x, (uint32_t)y);
+            // set tile occupancy
+            tile.occ = data_[tile.x + tile.y*width_];
+
+            // check if tile is empty space
+            if (tile.occ == 0) {
+                // get adjacent tiles
+                std::vector<Map::Tile> adj = getAdjacent(tile);
+
+                // iterate over the adjacent tiles
+                for (auto a: adj) {
+                    // check if adjacent tile is unexplored, then tile is a frontier
+                    if (a.occ == -1) {
+                        frontierMap[x][y] = true;
+                        break;
+                    }
+
+                }
+
+            }
+
+            
+
+        }
+    }
+    return frontierMap;
 }
 
 } // namespace end
