@@ -76,7 +76,7 @@ std::vector<Map::Tile> Map::getAdjacent(Map::Tile s)
 }
 
 // perform Breadth-First-Search starting at x and y (looking for closest frontier)
-void Map::BFS(float x, float y)
+Map::Tile Map::BFS(float x, float y)
 {
     // 2D vector of booleans to keep track of visited tiles
     std::vector<std::vector<bool>> visited(
@@ -93,22 +93,24 @@ void Map::BFS(float x, float y)
     visited[x][y] = true;
     queue.push(s);
 
-    // will set this to true when the first frontier is found, exits the while loop
-    bool foundNearest = false;
-
     // process every tile in the queue (will keep going until not tiles left or we exit)
-    while (queue.size() != 0 && !foundNearest) {
+    while (queue.size() != 0) {
         // set s to the first queue item and then pop it from the queue
         s = queue.front();
         queue.pop();
 
-        // check here if Tile s is a frontier, set foundNearest=true to exit
-        //
-        //
-
-        // get adjacent tiles of s and iterate over them
+        // get tiles adjacent to s tile
         std::vector<Map::Tile> adj = getAdjacent(s);
+
+        // save s occupancy into variable
+        int8_t occ = s.occ;
+        
+        // iterate over its adjacent tiles
         for (auto t: adj) {
+            
+            // if tile s is an open space and it as an adjacent unexplored tile
+            if (occ == 0 && t.occ == -1) return s;
+
             // if tile at these coords has not been visited, add to the queue and set to visited
             if (!visited[t.x][t.y]) {
                 visited[t.x][t.y] = true;

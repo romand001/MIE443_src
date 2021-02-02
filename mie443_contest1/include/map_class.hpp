@@ -28,8 +28,8 @@ public:
     void info();
     void print();
     // int8_t getOccupancy(uint32_t x, uint32_t y);
-    std::vector<Tile> getAdjacent(Tile t);
-    void BFS(float x, float y);
+    std::vector<Tile> getAdjacent(Tile s);
+    Tile BFS(float x, float y);
 
 };
 
