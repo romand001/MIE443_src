@@ -209,6 +209,7 @@ uint32_t* Map::closestFrontier(float x, float y) {
         ySum += b.y;
     }
 
+    // return pointer to coordinate array of cluster
     static uint32_t coords[2] = {(uint32_t)(xSum/border.size()), (uint32_t)(ySum/border.size())};
     return coords;
 
