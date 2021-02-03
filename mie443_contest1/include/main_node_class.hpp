@@ -14,6 +14,8 @@
 
 #include <chrono>
 
+#include "map_class.hpp"
+
 #define N_BUMPER 3
 #define RAD2DEG(rad) ((rad)* 180./M_PI)
 #define DEG2RAD(deg) ((deg)* M_PI/180.)
@@ -44,6 +46,8 @@ private:
     float angular_, linear_;
     float posX_, posY_, yaw_;
 
+    Map map_;
+
     uint8_t bumper_[3] = {kobuki_msgs::BumperEvent::RELEASED, 
                          kobuki_msgs::BumperEvent::RELEASED, 
                          kobuki_msgs::BumperEvent::RELEASED};
@@ -57,7 +61,7 @@ public:
 
     uint64_t secondsElapsed = 0;
 
-    MainNodeClass(ros::NodeHandle &node_handle, ros::NodeHandle& private_node_handle);
+    MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle);
     ~MainNodeClass() = default;
 
     void init();

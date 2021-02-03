@@ -2,17 +2,89 @@
 
 namespace mainSpace {
 
-// constructor for the Tile struct, sets the x and y values
-Map::Tile::Tile(uint32_t xt, uint32_t yt) : x(xt), y(yt) {}
+// constructor for the Tile struct, sets the coord and occupancy
+Map::Tile::Tile(uint32_t xt, uint32_t yt) 
+    :x(xt), 
+    y(yt) {};
 
-// Map class constructor, just set width, height, and data
-Map::Map(const uint32_t width, const uint32_t height, const std::vector<int8_t> data)
-    :width_(width),
-    height_(height),
-    data_(data)
+Map::AdjacencyRelationship::AdjacencyRelationship(Map::Tile selft, std::vector<Map::Tile> adjt)
+    :self(selft),
+    adjacentTiles(adjt) {}
+
+// Map class constructor, define adjacency relationships for graph traversal
+Map::Map()
 {
-    // put other constructor stuff in here
-    ROS_INFO("map object created with w: %u, h: %u", width_, height_);
+    //ROS_INFO("map object created with w: %u, h: %u", width_, height_);
+
+    // iterate over tiles to fill adjacency grid
+    for (int y=0; y < HEIGHT; y++) {
+        std::vector<Map::AdjacencyRelationship> adjacencyRow;
+        for (int x=0; x<WIDTH; x++) {
+            // declare vector for storing adjacent tiles
+            std::vector<Map::Tile> adjacentTiles;
+            
+            // fill adjacent tile vector
+            if (y != 0) {
+                // up tile
+                Map::Tile u(x, y-1);
+                u.occ = data_.data() + x + WIDTH*(y-1);
+                adjacentTiles.push_back(u);
+                if (x != 0) {
+                    // up+left tile
+                    Map::Tile ul(x-1, y-1);
+                    ul.occ = data_.data() + x-1 + WIDTH*(y-1);
+                    adjacentTiles.push_back(ul);
+                }
+                if (x != WIDTH-1) {
+                    // up+right tile
+                    Map::Tile ur(x+1, y-1);
+                    ur.occ = data_.data() + x+1 + WIDTH*(y-1);
+                    adjacentTiles.push_back(ur);
+                }
+            }
+            if (y != HEIGHT-1) {
+                // down tile
+                Map::Tile d(x, y+1);
+                d.occ = data_.data() + x + WIDTH*(y+1);
+                adjacentTiles.push_back(d);
+                if (x != 0) {
+                    // down+left tile
+                    Map::Tile dl(x-1, y+1);
+                    dl.occ = data_.data() + x-1 + WIDTH*(y+1);
+                    adjacentTiles.push_back(dl);
+                }
+                if (x != WIDTH-1) {
+                    // down+right tile
+                    Map::Tile dr(x+1, y+1);
+                    dr.occ = data_.data() + x+1 + WIDTH*(y+1);
+                    adjacentTiles.push_back(dr);
+                }
+            }
+
+            if (x != 0) {
+                // left tile
+                Map::Tile l(x-1, y);
+                l.occ = data_.data() + x-1 + WIDTH*(y);
+                adjacentTiles.push_back(l);
+            }
+            if (x != WIDTH-1) {
+                // right tile
+                Map::Tile r(x+1, y);
+                r.occ = data_.data() + x+1 + WIDTH*(y);
+                adjacentTiles.push_back(r);
+            }
+
+            // create an adjacency relationship object with the relationships found
+            Map::Tile t(x, y);
+            Map::AdjacencyRelationship rel(t, adjacentTiles);
+            // push the relationship to the adjacency grid
+            adjacencyRow.push_back(rel);
+
+        }
+        // push the current row to the grid
+        adjacencyGrid_.push_back(adjacencyRow);
+    }
+
 }
 
 // iterate over occupancy grid and print how many of each number occurs
@@ -23,7 +95,7 @@ void Map::info()
     // map (dictionary-like data structure) of <data number: how many times it occurs>
     std::map<int8_t, uint32_t> gridVals;
     // iterate through data and increment the value that it matches in gridVals
-    for (int i = 0; i < width_ * height_; i++) {
+    for (int i = 0; i < WIDTH * HEIGHT; i++) {
         gridVals[data_[i]]++;
     }
     // iterate through the map data structure and print out with nice formatting
@@ -33,8 +105,13 @@ void Map::info()
     }
 }
 
+// update map data
+// adjacency grid is also updated because it points to data_
+void Map::update(std::vector<int8_t> data) {data_ = data;}
+
 // print each number in the occupancy grid
 // you probably should not call this function
+/*
 void Map::print()
 {
     for (int i=0; i<width_*height_; i++) {
@@ -42,8 +119,11 @@ void Map::print()
         if (i % width_ == 0) std::cout << std::endl;
     }
 }
+*/
 
 // get the adjacent tiles of the given tile (8-connected neighbours)
+// DEPRECATED
+/*
 std::vector<Map::Tile> Map::getAdjacent(Map::Tile s)
 {
     // vector for storing the adjacent tiles
@@ -100,9 +180,10 @@ std::vector<Map::Tile> Map::getAdjacent(Map::Tile s)
         adj.push_back(r);
     }
 }
+*/
 
 // find the closest frontier to the given x and y coordinates
-uint32_t* Map::closestFrontier(float x, float y) {
+uint32_t* Map::closestFrontier(float xf, float yf) {
 
     //////////////////////////////////////////////////////
     //                  BFS Algorithm                   //
@@ -110,42 +191,45 @@ uint32_t* Map::closestFrontier(float x, float y) {
 
     // 2D vector of booleans to keep track of visited tiles
     std::vector<std::vector<bool>> visited(
-        width_,
-        std::vector<bool>(height_, false)
+        WIDTH,
+        std::vector<bool>(HEIGHT, false)
     );
     
-    // queue to store tiles that need to be checked
-    std::queue<Map::Tile> queue;
+    // queue to store adjacency relationships (tiles and their adjacencies)
+    std::queue<Map::AdjacencyRelationship> queue;
 
-    // create starting tile, set its occupancy value, set it to visited, push it to the queue
-    Map::Tile s((uint32_t)x, (uint32_t)y);
-    s.occ = data_[s.x + s.y*width_];
+    //current x and y coordinates
+    uint32_t x = (uint32_t)xf; uint32_t y = (uint32_t)yf; 
+
+    // set starting tile to visited, push it to the queue
+    Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
     visited[x][y] = true;
-    queue.push(s);
+    queue.push(rel);
 
     bool foundFirst = false; 
 
     // process every tile in the queue or until a frontier is found
     while (queue.size() != 0 && !foundFirst) {
-        // set s to the first queue item and then pop it from the queue
-        s = queue.front();
+        // set rel to the first queue item and then pop it from the queue
+        rel = queue.front();
         queue.pop();
 
-        // get tiles adjacent to s tile
-        std::vector<Map::Tile> adj = getAdjacent(s);
+        // get the adjacent tiles to this tile
+        std::vector<Map::Tile> adj = rel.adjacentTiles;
         
         // iterate over its adjacent tiles
         for (auto a: adj) {
-            // if tile s is an open space and it has an adjacent unexplored tile
-            // this means that s belongs to a frontier cluster
-            if (s.occ == 0 && a.occ == -1) {
+            // if the tile in rel is an open space and it has an adjacent unexplored tile
+            // this means that the rel tile belongs to a frontier cluster
+            if (*rel.self.occ == 0 && *a.occ == -1) {
                 foundFirst = true;
-                break;
             }
             // if tile at these coords has not been visited, add to the queue and set to visited
-            if (!visited[a.x][a.y]) {
+            else if (!visited[a.x][a.y]) {
+                // set this tile's position as visited
                 visited[a.x][a.y] = true;
-                queue.push(a);
+                // push the adjacency relationship to the queue and loop back
+                queue.push(adjacencyGrid_[a.x][a.y]);
             }
 
         }
@@ -161,42 +245,43 @@ uint32_t* Map::closestFrontier(float x, float y) {
 
     // vector for keeping track of visits efficiently
     // indexed the same as OccupancyGrid data
-    std::vector<bool> visitedTiles(width_*height_, false);
+    // different name than above (visited), but same purpose
+    std::vector<bool> visitedTiles(WIDTH*HEIGHT, false);
 
-    // stack for determining traversal order
-    std::stack<Map::Tile> stack;
+    // stack of adjacency relationships for determining traversal order
+    std::stack<Map::AdjacencyRelationship> stack;
 
-    // push starting frontier tile to stack
-    stack.push(s);
+    // push starting frontier relationship to stack (perhaps edge of frontier)
+    stack.push(rel);
 
-    bool reachedEnd = false;
+    bool hasNeighbours = false;
     // traverse non-visited frontier tiles until none are left
-    // we begin at the frontier tile we found above (s)
-    while (!stack.empty()) {
+    // we begin at the frontier tile we found above (tile of rel)
+    while (!stack.empty() && !hasNeighbours) {
 
-        // grab current tile from stack and pop it
-        s = stack.top();
+        // grab current relationship from stack and pop it
+        rel = stack.top();
         stack.pop();
 
-        border.push_back(s);
+        // store tile in border vector
+        border.push_back(rel.self);
 
         // get adjacent tiles
-        std::vector<Map::Tile> adj = getAdjacent(s);
+        std::vector<Map::Tile> adj = rel.adjacentTiles;
 
-        bool hasNeighbours = false;
+        hasNeighbours = false;
         // iterate over adjacent tiles
         for (auto a: adj) {
             // if adjacent is a frontier and has not been visited
-            if (s.occ == 0 && a.occ == -1 && 
-                    !visitedTiles[a.x+a.y*width_]) {
-                // set visited, push to stack
-                visitedTiles[a.x+a.y*width_] = true;
-                stack.push(a);
+            if (*rel.self.occ == 0 && *a.occ == -1 && 
+                    !visitedTiles[a.x + WIDTH*a.y]) {
+                // set visited, push relationship to stack
+                visitedTiles[a.x + WIDTH*a.y] = true;
+                stack.push(adjacencyGrid_[a.x][a.y]);
                 hasNeighbours = true;
                 break;
             }
         }
-        if (!hasNeighbours) break;
 
     }
 
@@ -217,6 +302,8 @@ uint32_t* Map::closestFrontier(float x, float y) {
 }
 
 // scans entire map and locates frontiers (BFS is probably better than this)
+// DEPRECATED
+/*
 std::vector<std::vector<bool>> Map::frontierScan()
 {
     // create map of frontiers
@@ -257,5 +344,6 @@ std::vector<std::vector<bool>> Map::frontierScan()
     }
     return frontierMap;
 }
+*/
 
 } // namespace end

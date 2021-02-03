@@ -1,5 +1,4 @@
 #include "main_node_class.hpp"
-#include "map_class.hpp"
 
 namespace mainSpace {
 
@@ -24,6 +23,8 @@ void MainNodeClass::init()
     timer_ = pnh_.createTimer(ros::Duration(0.1), &MainNodeClass::timerCallback, this);
 
     start_ = std::chrono::system_clock::now();
+
+    // initialize map
 
 }
 
@@ -59,10 +60,22 @@ void MainNodeClass::laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
     // this code runs whenever a new occupancy grid map is published to the map topic
-    // suggestion: try to update a private variable indicating where to go next
-    // nav_msgs::MapMetaData info = msg->info;
-    mainSpace::Map map(msg->info.width, msg->info.height, msg->data);
-    map.info();
+
+    if (msg->info.width != WIDTH || msg->info.height != HEIGHT) {
+        ROS_FATAL("received map with incompatible width or height: w=%u, h=%u", msg->info.width, msg->info.height);
+    }
+    
+    static bool firstCallback = true;
+
+    if (firstCallback) {
+        // other stuff can go here too
+        map_.info();
+    }
+
+    map_.update(msg->data);
+
+    firstCallback = false;
+    
 
 }
 
