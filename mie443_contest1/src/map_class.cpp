@@ -11,8 +11,14 @@ Map::AdjacencyRelationship::AdjacencyRelationship(Map::Tile selft, std::vector<M
     :self(selft),
     adjacentTiles(adjt) {}
 
+// empty constructor for initializing map without map_info
+Map::Map() {}
+
 // Map class constructor, define adjacency relationships for graph traversal
-Map::Map(uint32_t width, uint32_t height) : width_(width), height_(height)
+Map::Map(nav_msgs::MapMetaData map_info) 
+    :map_info_(map_info),
+    width_(map_info_.width),
+    height_(map_info_.height)
 {
     ROS_INFO("map object created with w: %u, h: %u", width_, height_);
 
@@ -87,7 +93,7 @@ Map::Map(uint32_t width, uint32_t height) : width_(width), height_(height)
         // push the current row to the grid
         adjacencyGrid_.push_back(adjacencyRow);
     }
-    //ROS_INFO("finished creating adjacency relationships");
+    ROS_INFO("finished creating adjacency relationships");
 }
 
 // iterate over occupancy grid and print how many of each number occurs
@@ -111,15 +117,15 @@ void Map::info()
 // update map data
 // adjacency grid is also updated because it points to data_
 void Map::update(std::vector<int8_t> data) {
-    //ROS_INFO("before data update");
+    ROS_INFO("before data update");
     data_ = data;
-    //ROS_INFO("after data update");
+    ROS_INFO("after data update");
     }
 
 // find the closest frontier to the given x and y coordinates
-std::pair<uint32_t, uint32_t> Map::closestFrontier(float xf, float yf) {
+std::pair<float, float> Map::closestFrontier(float xf, float yf) {
 
-    //ROS_INFO("entered closest frontier algorithm");
+    ROS_INFO("entered closest frontier algorithm");
 
     //////////////////////////////////////////////////////
     //                  BFS Algorithm                   //
@@ -134,12 +140,23 @@ std::pair<uint32_t, uint32_t> Map::closestFrontier(float xf, float yf) {
     // queue to store adjacency relationships (tiles and their adjacencies)
     std::queue<Map::AdjacencyRelationship> queue;
 
-    //current x and y coordinates
-    uint32_t x = (uint32_t)xf; uint32_t y = (uint32_t)yf;
+    uint32_t x = 0;
+    uint32_t y = 0;
+
+    //convert float pose to coords in map
+    float xt = xf - (map_info_.origin.position.x) / map_info_.resolution;
+    if (xt > 0) x = (uint32_t)ceil(xt);
+    else ROS_WARN("xt=%f, will use 0 instead", xt);
+    float yt = yf - (map_info_.origin.position.y) / map_info_.resolution;
+    if (yt > 0) y = (uint32_t)ceil(yt);
+    else ROS_WARN("yt=%f, will use 0 instead", yt);
     //ROS_INFO("robot coordinates are x=%u, y=%u", x, y);
 
-
     // set starting tile to visited, push it to the queue
+    if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
+        ROS_FATAL("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
+                    x, y, adjacencyGrid_.size(), adjacencyGrid_[0].size());
+    }
     Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
     visited[x][y] = true;
     queue.push(rel);
@@ -167,6 +184,9 @@ std::pair<uint32_t, uint32_t> Map::closestFrontier(float xf, float yf) {
                 // set this tile's position as visited
                 visited[a.x][a.y] = true;
                 // push the adjacency relationship to the queue and loop back
+
+                // ROS_INFO("tried pushing adjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
+                //             adjacencyGrid_.size(), adjacencyGrid_[0].size(), a.x, a.y);
                 queue.push(adjacencyGrid_[a.x][a.y]);
             }
 
@@ -228,18 +248,23 @@ std::pair<uint32_t, uint32_t> Map::closestFrontier(float xf, float yf) {
     //////////////////////////////////////////////////////
     //                  Cluster Center                  //
     //////////////////////////////////////////////////////
-    uint64_t xSum = 0; uint64_t ySum = 0;
-    for (auto b: border) {
-        xSum += b.x;
-        ySum += b.y;
-    }
 
-    std::pair<uint32_t, uint32_t> coords((uint32_t)(xSum/border.size()), (uint32_t)(ySum/border.size()));
+    Map::Tile clusterCenter = border[(int)(border.size()/2)];
 
-    ROS_INFO("center of cluster is at x=%u, y=%u", coords.first, coords.second);
+    float xCoord = ((float)clusterCenter.x * map_info_.resolution) + map_info_.origin.position.x;
+    float yCoord = ((float)clusterCenter.y * map_info_.resolution) + map_info_.origin.position.y;
+
+    std::pair<float, float> coords(xCoord, yCoord);
+
+    ROS_INFO("center of cluster is at x=%f, y=%f", coords.first, coords.second);
 
     return coords;
 
+}
+
+nav_msgs::MapMetaData Map::getInfo()
+{
+    return map_info_;
 }
 
 uint32_t Map::getWidth() 

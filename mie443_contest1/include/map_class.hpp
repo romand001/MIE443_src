@@ -23,6 +23,7 @@ class Map {
     };
 
 private:
+    nav_msgs::MapMetaData map_info_;
     uint32_t width_;
     uint32_t height_;
     std::vector<int8_t> data_;
@@ -30,11 +31,13 @@ private:
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
 
 public:
-    Map(uint32_t width, uint32_t height);
+    Map();
+    Map(nav_msgs::MapMetaData map_info);
     //~Map();
     void info();
     void update(std::vector<int8_t> data);
-    std::pair<uint32_t, uint32_t> closestFrontier(float x, float y);
+    std::pair<float, float> closestFrontier(float xf, float yf);
+    nav_msgs::MapMetaData getInfo();
     uint32_t getWidth();
     uint32_t getHeight();
 

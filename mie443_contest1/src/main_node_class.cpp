@@ -5,7 +5,7 @@ namespace mainSpace {
 MainNodeClass::MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle)
    :nh_(node_handle),
     pnh_(private_node_handle),
-    map_(256, 256)
+    map_()
 {
     this->init();
 }
@@ -68,14 +68,16 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     // }
     
     if (msg->info.width != map_.getWidth() || msg->info.height != map_.getHeight()) {
-        map_ = Map(msg->info.width, msg->info.height);
+        ROS_INFO("received map of size: w=%u, h=%u, creating new map object", 
+                                            msg->info.width, msg->info.height);
+        map_ = Map(msg->info);
     }
 
     map_.update(msg->data);
 
-    std::pair<uint32_t, uint32_t> frontierCoords = map_.closestFrontier(posX_, posY_);
+    std::pair<float, float> frontierCoords = map_.closestFrontier(posX_, posY_);
 
-    std::map<uint32_t, uint32_t> frontierList;
+    std::map<float, float> frontierList;
     frontierList.insert(frontierCoords);
 
     plotMarkers(frontierList);
@@ -135,27 +137,27 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
-void MainNodeClass::plotMarkers(std::map<uint32_t, uint32_t> frontierTiles) 
+void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles) 
 {
     visualization_msgs::Marker points;
-    points.header.frame_id = "points_frame";
+    points.header.frame_id = "/points_frame";
     points.header.stamp = ros::Time::now();
     points.ns = "points";
     points.action = visualization_msgs::Marker::ADD;
     points.pose.orientation.w = 1.0;
     points.id = 0;
     points.type = visualization_msgs::Marker::POINTS;
-    points.scale.x = 1.0;
-    points.scale.y = 1.0;
+    points.scale.x = 0.2;
+    points.scale.y = 0.2;
     points.color.a = 1.0;
-    points.color.r = 1.0f;
+    points.color.r = 1.0;
 
     for (auto frontier: frontierTiles) {
         geometry_msgs::Point p;
-        p.x = (float)frontier.first * 0.05;
-        p.y = (float)frontier.second * 0.05;
+        p.x = frontier.first;
+        p.y = frontier.second;
         ROS_INFO("plotting point at %f, %f", p.x, p.y);
-        p.z = 1.0f;
+        p.z = 0.01;
         points.points.push_back(p);
     }
     
