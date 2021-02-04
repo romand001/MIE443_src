@@ -5,9 +5,6 @@
 #include <queue>
 #include <stack>
 
-#define WIDTH 256
-#define HEIGHT 256
-
 namespace mainSpace {
 
 class Map {
@@ -26,19 +23,20 @@ class Map {
     };
 
 private:
-    // width_ and height_ are deprecated variables, use defines now
-    // uint32_t width_;
-    // uint32_t height_;
+    uint32_t width_;
+    uint32_t height_;
     std::vector<int8_t> data_;
     // 2D vector of mappings between grid values and pointers to all adjacent grid values
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
 
 public:
-    Map();
+    Map(uint32_t width, uint32_t height);
     //~Map();
     void info();
     void update(std::vector<int8_t> data);
-    uint32_t* closestFrontier(float x, float y);
+    std::pair<uint32_t, uint32_t> closestFrontier(float x, float y);
+    uint32_t getWidth();
+    uint32_t getHeight();
 
     // deprecated
     void print();

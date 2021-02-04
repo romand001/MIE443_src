@@ -4,7 +4,8 @@ namespace mainSpace {
 
 MainNodeClass::MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle)
    :nh_(node_handle),
-    pnh_(private_node_handle)
+    pnh_(private_node_handle),
+    map_(256, 256)
 {
     this->init();
 }
@@ -19,12 +20,13 @@ void MainNodeClass::init()
     map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
     odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
+    vis_pub_ = nh_.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
 
     timer_ = pnh_.createTimer(ros::Duration(0.1), &MainNodeClass::timerCallback, this);
 
     start_ = std::chrono::system_clock::now();
 
-    // initialize map
+    ROS_INFO("left mainnodeclass::init");
 
 }
 
@@ -61,20 +63,22 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
     // this code runs whenever a new occupancy grid map is published to the map topic
 
-    if (msg->info.width != WIDTH || msg->info.height != HEIGHT) {
-        ROS_FATAL("received map with incompatible width or height: w=%u, h=%u", msg->info.width, msg->info.height);
-    }
+    // if (msg->info.width != WIDTH || msg->info.height != HEIGHT) {
+    //     ROS_FATAL("received map with incompatible width or height: w=%u, h=%u", msg->info.width, msg->info.height);
+    // }
     
-    static bool firstCallback = true;
-
-    if (firstCallback) {
-        // other stuff can go here too
-        map_.info();
+    if (msg->info.width != map_.getWidth() || msg->info.height != map_.getHeight()) {
+        map_ = Map(msg->info.width, msg->info.height);
     }
 
     map_.update(msg->data);
 
-    firstCallback = false;
+    std::pair<uint32_t, uint32_t> frontierCoords = map_.closestFrontier(posX_, posY_);
+
+    std::map<uint32_t, uint32_t> frontierList;
+    frontierList.insert(frontierCoords);
+
+    plotMarkers(frontierList);
     
 
 }
@@ -130,5 +134,34 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
+
+void MainNodeClass::plotMarkers(std::map<uint32_t, uint32_t> frontierTiles) 
+{
+    visualization_msgs::Marker points;
+    points.header.frame_id = "points_frame";
+    points.header.stamp = ros::Time::now();
+    points.ns = "points";
+    points.action = visualization_msgs::Marker::ADD;
+    points.pose.orientation.w = 1.0;
+    points.id = 0;
+    points.type = visualization_msgs::Marker::POINTS;
+    points.scale.x = 1.0;
+    points.scale.y = 1.0;
+    points.color.a = 1.0;
+    points.color.r = 1.0f;
+
+    for (auto frontier: frontierTiles) {
+        geometry_msgs::Point p;
+        p.x = (float)frontier.first * 0.05;
+        p.y = (float)frontier.second * 0.05;
+        ROS_INFO("plotting point at %f, %f", p.x, p.y);
+        p.z = 1.0f;
+        points.points.push_back(p);
+    }
+    
+    vis_pub_.publish(points);
+
+}
+
 
 } //namespace end

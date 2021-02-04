@@ -3,6 +3,7 @@
 #include <geometry_msgs/Twist.h>
 #include <kobuki_msgs/BumperEvent.h>
 #include <sensor_msgs/LaserScan.h>
+#include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <tf/transform_datatypes.h>
@@ -40,6 +41,7 @@ private:
     ros::Subscriber map_sub_;
     ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
+    ros::Publisher vis_pub_;
 
     geometry_msgs::Twist vel_;
 
@@ -75,6 +77,8 @@ public:
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
     void timerCallback(const ros::TimerEvent& event);
+
+    void plotMarkers(std::map<uint32_t, uint32_t> frontierTiles);
 
 };
 
