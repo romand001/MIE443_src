@@ -20,7 +20,7 @@ void MainNodeClass::init()
     map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
     odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
-    vis_pub_ = nh_.advertise<visualization_msgs::Marker>( "visualization_marker", 0 );
+    vis_pub_ = nh_.advertise<visualization_msgs::Marker>( "visualization_marker", 10);
 
     timer_ = pnh_.createTimer(ros::Duration(0.1), &MainNodeClass::timerCallback, this);
 
@@ -140,15 +140,15 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles) 
 {
     visualization_msgs::Marker points;
-    points.header.frame_id = "/points_frame";
+    points.header.frame_id = "/map";
     points.header.stamp = ros::Time::now();
     points.ns = "points";
     points.action = visualization_msgs::Marker::ADD;
     points.pose.orientation.w = 1.0;
     points.id = 0;
     points.type = visualization_msgs::Marker::POINTS;
-    points.scale.x = 0.2;
-    points.scale.y = 0.2;
+    points.scale.x = 0.05;
+    points.scale.y = 0.05;
     points.color.a = 1.0;
     points.color.r = 1.0;
 
@@ -157,7 +157,7 @@ void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles)
         p.x = frontier.first;
         p.y = frontier.second;
         ROS_INFO("plotting point at %f, %f", p.x, p.y);
-        p.z = 0.01;
+        p.z = 0.02;
         points.points.push_back(p);
     }
     
