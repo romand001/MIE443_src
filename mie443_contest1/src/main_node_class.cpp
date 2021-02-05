@@ -75,10 +75,13 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
     map_.update(msg->data);
 
+    /*
     std::pair<float, float> frontierCoords = map_.closestFrontier(posX_, posY_);
 
     std::map<float, float> frontierList;
     frontierList.insert(frontierCoords);
+    */
+    std::map<float, float> frontierList = map_.closestFrontier(posX_, posY_);
 
     plotMarkers(frontierList);
     
@@ -91,13 +94,15 @@ void MainNodeClass::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     posY_ = msg->pose.pose.position.y;
     yaw_ = tf::getYaw(msg->pose.pose.orientation);
     
-    // ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
+    //ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
 }
 
 void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 {
     // this code runs at a regular time interval defined in the timer_ intialization
     // this is probably where we put the control code that moves the robot
+
+    /*
     bool any_bumper_pressed = false;
     for (uint32_t b_idx = 0; b_idx < N_BUMPER; b_idx++) {
         any_bumper_pressed |= (bumper_[b_idx] == kobuki_msgs::BumperEvent::PRESSED);
@@ -128,7 +133,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         angular_ = 0.0;
         linear_ = 0.0;
     } 
-
+    */
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);
@@ -156,7 +161,7 @@ void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles)
         geometry_msgs::Point p;
         p.x = frontier.first;
         p.y = frontier.second;
-        ROS_INFO("plotting point at %f, %f", p.x, p.y);
+        //ROS_INFO("plotting point at %f, %f", p.x, p.y);
         p.z = 0.02;
         points.points.push_back(p);
     }

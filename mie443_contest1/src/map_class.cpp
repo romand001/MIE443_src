@@ -117,15 +117,15 @@ void Map::info()
 // update map data
 // adjacency grid is also updated because it points to data_
 void Map::update(std::vector<int8_t> data) {
-    ROS_INFO("before data update");
+    //ROS_INFO("before data update");
     data_ = data;
-    ROS_INFO("after data update");
+    //ROS_INFO("after data update");
     }
 
 // find the closest frontier to the given x and y coordinates
-std::pair<float, float> Map::closestFrontier(float xf, float yf) {
+std::map<float, float> Map::closestFrontier(float xf, float yf) {
 
-    ROS_INFO("entered closest frontier algorithm");
+    //ROS_INFO("entered closest frontier algorithm");
 
     //////////////////////////////////////////////////////
     //                  BFS Algorithm                   //
@@ -136,21 +136,15 @@ std::pair<float, float> Map::closestFrontier(float xf, float yf) {
         width_,
         std::vector<bool>(height_, false)
     );
+
+    std::pair<uint32_t, uint32_t> mapCoords = posToMap(xf, yf);
+    uint32_t x = mapCoords.first;
+    uint32_t y = mapCoords.second;
     
     // queue to store adjacency relationships (tiles and their adjacencies)
     std::queue<Map::AdjacencyRelationship> queue;
 
-    uint32_t x = 0;
-    uint32_t y = 0;
-
-    //convert float pose to coords in map
-    float xt = xf - (map_info_.origin.position.x) / map_info_.resolution;
-    if (xt > 0) x = (uint32_t)ceil(xt);
-    else ROS_WARN("xt=%f, will use 0 instead", xt);
-    float yt = yf - (map_info_.origin.position.y) / map_info_.resolution;
-    if (yt > 0) y = (uint32_t)ceil(yt);
-    else ROS_WARN("yt=%f, will use 0 instead", yt);
-    //ROS_INFO("robot coordinates are x=%u, y=%u", x, y);
+    ROS_INFO("robot float coordinates are x=%f, y=%f", xf, yf);
 
     // set starting tile to visited, push it to the queue
     if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
@@ -194,7 +188,8 @@ std::pair<float, float> Map::closestFrontier(float xf, float yf) {
 
     }
 
-    ROS_INFO("finished BFS, found frontier at x=%u, y=%u", rel.self.x, rel.self.y);
+    ROS_INFO("finished BFS, found first frontier at x=%u, y=%u", rel.self.x, rel.self.y);
+    ROS_INFO("this frontier tile has %lu neighbours", rel.adjacentTiles.size());
 
     //////////////////////////////////////////////////////
     //              Border Detection (DFS)              //
@@ -249,6 +244,8 @@ std::pair<float, float> Map::closestFrontier(float xf, float yf) {
     //                  Cluster Center                  //
     //////////////////////////////////////////////////////
 
+    /*
+
     Map::Tile clusterCenter = border[(int)(border.size()/2)];
 
     float xCoord = ((float)clusterCenter.x * map_info_.resolution) + map_info_.origin.position.x;
@@ -259,6 +256,17 @@ std::pair<float, float> Map::closestFrontier(float xf, float yf) {
     ROS_INFO("center of cluster is at x=%f, y=%f", coords.first, coords.second);
 
     return coords;
+    */
+
+   ROS_INFO("traversed border and found %lu tiles", border.size());
+
+   std::map<float, float> frontierCoords;
+
+   for (auto frontier: border) {
+        frontierCoords.insert(mapToPos(frontier.x, frontier.y));
+   }
+   frontierCoords.insert(std::pair<float, float>(xf, yf));
+   return frontierCoords;
 
 }
 
@@ -275,6 +283,30 @@ uint32_t Map::getWidth()
 uint32_t Map::getHeight() 
 {
     return height_;
+}
+
+std::pair<float, float> Map::mapToPos(uint32_t intX, uint32_t intY)
+{
+    float xCoord = ((float)intX * map_info_.resolution) + map_info_.origin.position.x;
+    float yCoord = ((float)intY * map_info_.resolution) + map_info_.origin.position.y;
+    std::pair<float, float> floatPair(xCoord, yCoord);
+    return floatPair;
+}
+
+std::pair<uint32_t, uint32_t> Map::posToMap(float floatX, float floatY)
+{
+    uint32_t x = 0;
+    uint32_t y = 0;
+
+    float xt = (floatX - map_info_.origin.position.x) / map_info_.resolution;
+    if (xt >= 0) x = (uint32_t)ceil(xt);
+    else ROS_WARN("xt=%f, will use 0 instead", xt);
+    float yt = (floatY - map_info_.origin.position.y) / map_info_.resolution;
+    if (yt >= 0) y = (uint32_t)ceil(yt);
+    else ROS_WARN("yt=%f, will use 0 instead", yt);
+
+    std::pair<uint32_t, uint32_t> intPair(x, y);
+    return intPair;
 }
 
 // scans entire map and locates frontiers (BFS is probably better than this)
