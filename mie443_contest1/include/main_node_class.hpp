@@ -6,7 +6,8 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <tf/transform_datatypes.h>
+//#include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 
 #include <boost/thread.hpp>
 
@@ -49,6 +50,8 @@ private:
     float posX_, posY_, yaw_;
 
     Map map_;
+    std::string base_link_frame_, map_frame_;
+    tf::TransformListener listener_;
 
     uint8_t bumper_[3] = {kobuki_msgs::BumperEvent::RELEASED, 
                          kobuki_msgs::BumperEvent::RELEASED, 

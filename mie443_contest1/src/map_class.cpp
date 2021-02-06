@@ -25,9 +25,9 @@ Map::Map(nav_msgs::MapMetaData map_info)
     data_.resize(width_*height_, 0);
 
     // iterate over tiles to fill adjacency grid
-    for (int y=0; y < height_; y++) {
-        std::vector<Map::AdjacencyRelationship> adjacencyRow;
-        for (int x=0; x<width_; x++) {
+    for (int x=0; x < width_; x++) {
+        std::vector<Map::AdjacencyRelationship> adjacencyCol;
+        for (int y=0; y<height_; y++) {
             // declare vector for storing adjacent tiles
             std::vector<Map::Tile> adjacentTiles;
             
@@ -87,11 +87,11 @@ Map::Map(nav_msgs::MapMetaData map_info)
             t.occ = &data_[0] + x + width_*y;
             Map::AdjacencyRelationship rel(t, adjacentTiles);
             // push the relationship to the adjacency grid
-            adjacencyRow.push_back(rel);
+            adjacencyCol.push_back(rel);
 
         }
         // push the current row to the grid
-        adjacencyGrid_.push_back(adjacencyRow);
+        adjacencyGrid_.push_back(adjacencyCol);
     }
     ROS_INFO("finished creating adjacency relationships");
 }
@@ -146,12 +146,14 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
 
     ROS_INFO("robot float coordinates are x=%f, y=%f", xf, yf);
 
-    // set starting tile to visited, push it to the queue
     if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
         ROS_FATAL("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
                     x, y, adjacencyGrid_.size(), adjacencyGrid_[0].size());
     }
+
     Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
+
+    // set starting tile to visited, push it to the queue
     visited[x][y] = true;
     queue.push(rel);
 

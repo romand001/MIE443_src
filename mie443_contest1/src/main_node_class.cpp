@@ -20,13 +20,14 @@ void MainNodeClass::init()
     map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
     odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
-    vis_pub_ = nh_.advertise<visualization_msgs::Marker>( "visualization_marker", 10);
+    vis_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
     timer_ = pnh_.createTimer(ros::Duration(0.1), &MainNodeClass::timerCallback, this);
 
-    start_ = std::chrono::system_clock::now();
+    nh_.param<std::string>("map_frame", map_frame_, "/map");
+    nh_.param<std::string>("base_link_frame", base_link_frame_, "/base_link");
 
-    ROS_INFO("left mainnodeclass::init");
+    start_ = std::chrono::system_clock::now();
 
 }
 
@@ -62,25 +63,18 @@ void MainNodeClass::laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
     // this code runs whenever a new occupancy grid map is published to the map topic
-
-    // if (msg->info.width != WIDTH || msg->info.height != HEIGHT) {
-    //     ROS_FATAL("received map with incompatible width or height: w=%u, h=%u", msg->info.width, msg->info.height);
-    // }
     
+    // create new map object if received map size != current map size
     if (msg->info.width != map_.getWidth() || msg->info.height != map_.getHeight()) {
         ROS_INFO("received map of size: w=%u, h=%u, creating new map object", 
                                             msg->info.width, msg->info.height);
         map_ = Map(msg->info);
     }
 
+    // update data array of map
     map_.update(msg->data);
 
-    /*
-    std::pair<float, float> frontierCoords = map_.closestFrontier(posX_, posY_);
-
-    std::map<float, float> frontierList;
-    frontierList.insert(frontierCoords);
-    */
+    // get closest frontier
     std::map<float, float> frontierList = map_.closestFrontier(posX_, posY_);
 
     plotMarkers(frontierList);
@@ -90,11 +84,26 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
 void MainNodeClass::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-	posX_ = msg->pose.pose.position.x;
-    posY_ = msg->pose.pose.position.y;
-    yaw_ = tf::getYaw(msg->pose.pose.orientation);
+	// posX_ = msg->pose.pose.position.x;
+    // posY_ = msg->pose.pose.position.y;
+    // yaw_ = tf::getYaw(msg->pose.pose.orientation);
+
+    // update transform from /base_link to /map
+    tf::StampedTransform transform;
+    try
+    {
+        listener_.lookupTransform(map_frame_, base_link_frame_,
+                                ros::Time(0), transform);
+        posX_ = transform.getOrigin().x();
+        posY_ = transform.getOrigin().y();
+        yaw_ = tf::getYaw(transform.getRotation());
+    }
+    catch (tf::TransformException &ex)
+    {
+        ROS_ERROR("[ mapCallback() ] %s", ex.what());
+    }
     
-    //ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
+    // ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
 }
 
 void MainNodeClass::timerCallback(const ros::TimerEvent &event)

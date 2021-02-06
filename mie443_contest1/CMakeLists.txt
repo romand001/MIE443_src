@@ -12,7 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
 	genmsg
 	image_transport
 	sensor_msgs
-	kobuki_msgs)
+    kobuki_msgs
+    tf)
 
 generate_messages(DEPENDENCIES sensor_msgs kobuki_msgs)
 
@@ -24,8 +25,6 @@ catkin_package(
 
 include_directories(include ${OpenCV_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
 
-
-# add the publisher example
 
 add_library(main_class_node src/main_node_class.cpp)
 add_library(map_class src/map_class.cpp)
