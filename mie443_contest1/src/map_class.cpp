@@ -160,10 +160,11 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
     visited[x][y] = true;
     queue.push(rel);
 
-    bool foundFirst = false; 
+    // is the current frontier bigger than the minimum defined size?
+    bool bigEnough = false; 
 
-    // process every tile in the queue or until a frontier is found
-    while (queue.size() != 0 && !foundFirst) {
+    // process every tile in the queue or until a big enough frontier is found
+    while (queue.size() != 0 && !bigEnough) {
         // set rel to the first queue item and then pop it from the queue
         rel = queue.front();
         queue.pop();
@@ -176,10 +177,84 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
             // if the tile in rel is an open space and it has an adjacent unexplored tile
             // this means that the rel tile belongs to a frontier cluster
             if (*rel.self.occ == 0 && *a.occ == -1) {
-                foundFirst = true;
+
+                ROS_INFO("finished BFS, found frontier at x=%u, y=%u", rel.self.x, rel.self.y);
+
+                // perform DFS and propagate along border to check size
+
+                //////////////////////////////////////////////////////
+                //            Border Propagation (DFS)              //
+                //////////////////////////////////////////////////////
+
+                // store traversed tiles in a vector
+                std::vector<Map::Tile> border;
+
+                // vector for keeping track of visits efficiently
+                // indexed the same as OccupancyGrid data
+                // different name than above (visited), but same purpose
+                std::vector<bool> visitedTiles(width_*height_, false);
+
+                // stack of adjacency relationships for determining traversal order
+                std::stack<Map::AdjacencyRelationship> stack;
+
+                // push starting frontier relationship to stack (perhaps edge of frontier)
+                stack.push(rel);
+
+                // traverse non-visited frontier tiles until none are left
+                // we begin at the frontier tile we found above (tile of rel)
+                while (!stack.empty()) {
+
+                    // grab current relationship from stack and pop it
+                    rel = stack.top();
+                    stack.pop();
+
+                    // store tile in border vector
+                    border.push_back(rel.self);
+
+                    // get adjacent tiles
+                    std::vector<Map::Tile> adj = rel.adjacentTiles;
+
+                    // iterate over adjacent tiles
+                    for (auto a: adj) {
+                        // if this neighour is an open space and hasn't been visited
+                        if (*a.occ == 0 && !visitedTiles[a.x + width_*a.y]) {
+                            // set to visited
+                            visitedTiles[a.x + width_*a.y] = true;
+                            // get tiles adjacent to the neighbour and iterate over them
+                            Map::AdjacencyRelationship rel2 = adjacencyGrid_[a.x][a.y];
+                            std::vector<Map::Tile> adj2 = rel2.adjacentTiles;
+                            for (auto a2: adj2) {
+                                // if any of the adjacent tile's neighbours is an unknown space, add the tile to stack
+                                if (*a2.occ == -1) {
+                                    stack.push(rel2);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                    }
+
+                }
+
+                // check border size, return those tiles if the border is big enough
+                //ROS_INFO("traversed border and found %lu tiles", border.size());
+
+                if (border.size() >= MINBORDERSIZE) {
+                    std::map<float, float> frontierCoords;
+
+                    for (auto frontier: border) {
+                        frontierCoords.insert(mapToPos(frontier.x, frontier.y));
+                    }
+                    // uncomment this to plot robot coords as well:
+                    // frontierCoords.insert(std::pair<float, float>(xf, yf));
+                    return frontierCoords;
+                }
+                // otherwise we find the next frontier
+
             }
             // if tile at these coords has not been visited, add to the queue and set to visited
             // tile must also be open space in order to be added, so that search does not go through walls
+            // this is part of the BFS
             else if (!visited[a.x][a.y] && *a.occ == 0) {
                 // set this tile's position as visited
                 visited[a.x][a.y] = true;
@@ -193,75 +268,10 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
         }
 
     }
-
-    ROS_INFO("finished BFS, found first frontier at x=%u, y=%u", rel.self.x, rel.self.y);
-    //ROS_INFO("this frontier tile has %lu neighbours", rel.adjacentTiles.size());
-
-    //////////////////////////////////////////////////////
-    //              Border Detection (DFS)              //
-    //////////////////////////////////////////////////////
-
-    // store traversed tiles in a vector
-    std::vector<Map::Tile> border;
-
-    // vector for keeping track of visits efficiently
-    // indexed the same as OccupancyGrid data
-    // different name than above (visited), but same purpose
-    std::vector<bool> visitedTiles(width_*height_, false);
-
-    // stack of adjacency relationships for determining traversal order
-    std::stack<Map::AdjacencyRelationship> stack;
-
-    // push starting frontier relationship to stack (perhaps edge of frontier)
-    stack.push(rel);
-
-    // traverse non-visited frontier tiles until none are left
-    // we begin at the frontier tile we found above (tile of rel)
-    while (!stack.empty()) {
-
-        // grab current relationship from stack and pop it
-        rel = stack.top();
-        stack.pop();
-
-        // store tile in border vector
-        border.push_back(rel.self);
-
-        // get adjacent tiles
-        std::vector<Map::Tile> adj = rel.adjacentTiles;
-
-        // iterate over adjacent tiles
-        for (auto a: adj) {
-            // if this neighour is an open space and hasn't been visited
-            if (*a.occ == 0 && !visitedTiles[a.x + width_*a.y]) {
-                // set to visited
-                visitedTiles[a.x + width_*a.y] = true;
-                // get tiles adjacent to the neighbour and iterate over them
-                Map::AdjacencyRelationship rel2 = adjacencyGrid_[a.x][a.y];
-                std::vector<Map::Tile> adj2 = rel2.adjacentTiles;
-                for (auto a2: adj2) {
-                    // if any of the adjacent tile's neighbours is an unknown space, add the tile to stack
-                    if (*a2.occ == -1) {
-                        stack.push(rel2);
-                        break;
-                    }
-                }
-            }
-            
-        }
-
-    }
-
-    ROS_INFO("traversed border and found %lu tiles", border.size());
-
-    // return the coordinates of each tile on the frontier border
-    std::map<float, float> frontierCoords;
-
-    for (auto frontier: border) {
-            frontierCoords.insert(mapToPos(frontier.x, frontier.y));
-    }
-    // uncomment this to plot robot coords as well:
-    // frontierCoords.insert(std::pair<float, float>(xf, yf));
-    return frontierCoords;
+    // if no frontier big enough was found, return an empty map of floats
+    std::map<float, float> emptyfloatMap;
+    return emptyfloatMap;
+    
 
 }
 
