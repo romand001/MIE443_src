@@ -5,6 +5,8 @@
 #include <queue>
 #include <stack>
 
+#define MINBORDERSIZE 7
+
 namespace mainSpace {
 
 class Map {

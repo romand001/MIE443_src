@@ -124,6 +124,7 @@ void Map::update(std::vector<int8_t> data) {
 
 // find the closest frontier to the given x and y coordinates
 std::map<float, float> Map::closestFrontier(float xf, float yf) {
+    
 
     //ROS_INFO("entered closest frontier algorithm");
 
@@ -147,8 +148,10 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
     ROS_INFO("robot float coordinates are x=%f, y=%f", xf, yf);
 
     if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
-        ROS_FATAL("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
+        ROS_ERROR("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
                     x, y, adjacencyGrid_.size(), adjacencyGrid_[0].size());
+        std::map<float, float> emptyMap;
+        return emptyMap;
     }
 
     Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
@@ -176,7 +179,8 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
                 foundFirst = true;
             }
             // if tile at these coords has not been visited, add to the queue and set to visited
-            else if (!visited[a.x][a.y]) {
+            // tile must also be open space in order to be added, so that search does not go through walls
+            else if (!visited[a.x][a.y] && *a.occ == 0) {
                 // set this tile's position as visited
                 visited[a.x][a.y] = true;
                 // push the adjacency relationship to the queue and loop back
@@ -191,7 +195,7 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
     }
 
     ROS_INFO("finished BFS, found first frontier at x=%u, y=%u", rel.self.x, rel.self.y);
-    ROS_INFO("this frontier tile has %lu neighbours", rel.adjacentTiles.size());
+    //ROS_INFO("this frontier tile has %lu neighbours", rel.adjacentTiles.size());
 
     //////////////////////////////////////////////////////
     //              Border Detection (DFS)              //
@@ -211,10 +215,9 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
     // push starting frontier relationship to stack (perhaps edge of frontier)
     stack.push(rel);
 
-    bool hasNeighbours = false;
     // traverse non-visited frontier tiles until none are left
     // we begin at the frontier tile we found above (tile of rel)
-    while (!stack.empty() && !hasNeighbours) {
+    while (!stack.empty()) {
 
         // grab current relationship from stack and pop it
         rel = stack.top();
@@ -226,49 +229,39 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
         // get adjacent tiles
         std::vector<Map::Tile> adj = rel.adjacentTiles;
 
-        hasNeighbours = false;
         // iterate over adjacent tiles
         for (auto a: adj) {
-            // if adjacent is a frontier and has not been visited
-            if (*rel.self.occ == 0 && *a.occ == -1 && 
-                    !visitedTiles[a.x + width_*a.y]) {
-                // set visited, push relationship to stack
+            // if this neighour is an open space and hasn't been visited
+            if (*a.occ == 0 && !visitedTiles[a.x + width_*a.y]) {
+                // set to visited
                 visitedTiles[a.x + width_*a.y] = true;
-                stack.push(adjacencyGrid_[a.x][a.y]);
-                hasNeighbours = true;
-                break;
+                // get tiles adjacent to the neighbour and iterate over them
+                Map::AdjacencyRelationship rel2 = adjacencyGrid_[a.x][a.y];
+                std::vector<Map::Tile> adj2 = rel2.adjacentTiles;
+                for (auto a2: adj2) {
+                    // if any of the adjacent tile's neighbours is an unknown space, add the tile to stack
+                    if (*a2.occ == -1) {
+                        stack.push(rel2);
+                        break;
+                    }
+                }
             }
+            
         }
 
     }
 
-    //////////////////////////////////////////////////////
-    //                  Cluster Center                  //
-    //////////////////////////////////////////////////////
+    ROS_INFO("traversed border and found %lu tiles", border.size());
 
-    /*
+    // return the coordinates of each tile on the frontier border
+    std::map<float, float> frontierCoords;
 
-    Map::Tile clusterCenter = border[(int)(border.size()/2)];
-
-    float xCoord = ((float)clusterCenter.x * map_info_.resolution) + map_info_.origin.position.x;
-    float yCoord = ((float)clusterCenter.y * map_info_.resolution) + map_info_.origin.position.y;
-
-    std::pair<float, float> coords(xCoord, yCoord);
-
-    ROS_INFO("center of cluster is at x=%f, y=%f", coords.first, coords.second);
-
-    return coords;
-    */
-
-   ROS_INFO("traversed border and found %lu tiles", border.size());
-
-   std::map<float, float> frontierCoords;
-
-   for (auto frontier: border) {
-        frontierCoords.insert(mapToPos(frontier.x, frontier.y));
-   }
-   frontierCoords.insert(std::pair<float, float>(xf, yf));
-   return frontierCoords;
+    for (auto frontier: border) {
+            frontierCoords.insert(mapToPos(frontier.x, frontier.y));
+    }
+    // uncomment this to plot robot coords as well:
+    // frontierCoords.insert(std::pair<float, float>(xf, yf));
+    return frontierCoords;
 
 }
 
