@@ -38,7 +38,7 @@ private:
     ros::Subscriber bumper_sub_;
     ros::Subscriber laser_sub_;
     ros::Subscriber map_sub_;
-    ros::Subscriber odom_sub_;
+    //ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
     ros::Publisher vis_pub_;
 
@@ -75,7 +75,7 @@ public:
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
-    void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
+    //void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
     void timerCallback(const ros::TimerEvent& event);
 

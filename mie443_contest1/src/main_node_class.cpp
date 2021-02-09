@@ -18,7 +18,7 @@ void MainNodeClass::init()
     bumper_sub_ = nh_.subscribe("mobile_base/events/bumper", 10, &MainNodeClass::bumperCallback, this);
     laser_sub_ = nh_.subscribe("scan", 10, &MainNodeClass::laserCallback, this);
     map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
-    odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
+    //odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
     vis_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
 
@@ -91,13 +91,11 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
 }
 
-void MainNodeClass::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
+// this code runs at a regular time interval defined in the timer_ intialization
+void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 {
-	// posX_ = msg->pose.pose.position.x;
-    // posY_ = msg->pose.pose.position.y;
-    // yaw_ = tf::getYaw(msg->pose.pose.orientation);
-
-    // update transform from /base_link to /map
+    
+    // updating the x, y, and yaw of the robot
     tf::StampedTransform transform;
     try
     {
@@ -111,47 +109,16 @@ void MainNodeClass::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     {
         ROS_ERROR("[ mapCallback() ] %s", ex.what());
     }
-    
-    // ROS_INFO("Position: (%f,%f) Orientation:%frad or%fdegrees.", posX_, posY_, yaw_, RAD2DEG(yaw_));
-}
 
-void MainNodeClass::timerCallback(const ros::TimerEvent &event)
-{
-    // this code runs at a regular time interval defined in the timer_ intialization
-    // this is probably where we put the control code that moves the robot
+    // getting the shortest path
+    std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_)
 
-    /*
-    bool any_bumper_pressed = false;
-    for (uint32_t b_idx = 0; b_idx < N_BUMPER; b_idx++) {
-        any_bumper_pressed |= (bumper_[b_idx] == kobuki_msgs::BumperEvent::PRESSED);
-    }
+    // converting path into velocity commands
 
-    // Control logic after bumpers are being pressed.
-    if (posX_<0.5 && yaw_<M_PI/12 && !any_bumper_pressed) {
-        angular_ = 0.0;
-        linear_ = 0.2;
-    }
-    else if (yaw_<M_PI/2 && posX_>0.5 && !any_bumper_pressed) {
-        angular_ = M_PI/6;
-        linear_ = 0.0;
-    }
-    else if (minLaserDist_>1. && !any_bumper_pressed) {
-        linear_ = 0.1;
-        if(yaw_<17/36*M_PI || posX_>0.6) {
-            angular_ = M_PI/12.;
-        }
-        else if (yaw_<19/36*M_PI || posX_<0.4) {
-            angular_ = -M_PI/12.;
-        }
-        else {
-            angular_ = 0;
-        }
-    }
-    else {
-        angular_ = 0.0;
-        linear_ = 0.0;
-    } 
-    */
+
+
+
+
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);
