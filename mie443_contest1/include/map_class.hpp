@@ -30,8 +30,12 @@ private:
     uint32_t width_;
     uint32_t height_;
     std::vector<int8_t> data_;
+
     // 2D vector of mappings between Tiles and their adjacent Tiles
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
+
+    // closest frontier map coordinates
+    std::pair<uint32_t, uint32_t> frontier_;
 
 public:
     Map();
@@ -40,6 +44,7 @@ public:
     void info();
     void update(std::vector<int8_t> data);
     std::map<float, float> closestFrontier(float xf, float yf);
+    std::vector<std::pair<float, float>> getPath(float posX, float posY);
     nav_msgs::MapMetaData getInfo();
     uint32_t getWidth();
     uint32_t getHeight();

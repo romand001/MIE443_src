@@ -119,7 +119,8 @@ void Map::info()
 void Map::update(std::vector<int8_t> data) {data_ = data;}
 
 // find the closest frontier to the given x and y coordinates
-std::map<float, float> Map::closestFrontier(float xf, float yf) {
+std::map<float, float> Map::closestFrontier(float xf, float yf) 
+{
     
 
     //ROS_INFO("entered closest frontier algorithm");
@@ -244,6 +245,9 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
                     // uncomment this to plot robot coords as well:
                     // frontierCoords.insert(std::pair<float, float>(xf, yf));
 
+                    // set goal coordinate for sebastian
+                    frontier_ = frontierCoords[(int)frontierCoords.size()];
+
                     return frontierCoords;
                 }
                 // otherwise we find the next frontier
@@ -269,6 +273,17 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
     std::map<float, float> emptyfloatMap;
     return emptyfloatMap;
     
+
+}
+
+// returns a path for robot to follow to the frontier
+// takes X and Y robot positions, returns vector of coordinates
+// makes use of private members occupancy grid (pre-processed version) and frontier coordinates
+std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
+{
+    // for now: use occupancyGrid_ and frontier_
+    // get x and y from frontier with frontier.first and frontier.second
+
 
 }
 
