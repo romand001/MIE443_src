@@ -3,6 +3,10 @@
 #include <vector>
 #include <map>
 #include <queue>
+#include <stack>
+#include <chrono>
+
+#define MINBORDERSIZE 7
 
 namespace mainSpace {
 
@@ -11,25 +15,43 @@ class Map {
     struct Tile {
         uint32_t x;
         uint32_t y;
-        uint32_t occ;
+        int8_t* occ;
         Tile(uint32_t xt, uint32_t yt);
     };
 
+    struct AdjacencyRelationship {
+        Tile self;
+        std::vector<Tile> adjacentTiles;
+        AdjacencyRelationship(Tile selft, std::vector<Tile> adjt);
+    };
+
 private:
+    nav_msgs::MapMetaData map_info_;
     uint32_t width_;
     uint32_t height_;
     std::vector<int8_t> data_;
-    std::vector<std::vector<int8_t>> grid_;
+    // 2D vector of mappings between Tiles and their adjacent Tiles
+    std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
 
 public:
-    Map(uint32_t width, uint32_t height, std::vector<int8_t> data);
-    ~Map() = default;
-    // void populate(const std::vector<int8> data);
+    Map();
+    Map(nav_msgs::MapMetaData map_info);
+    //~Map();
     void info();
+    void update(std::vector<int8_t> data);
+    std::map<float, float> closestFrontier(float xf, float yf);
+    nav_msgs::MapMetaData getInfo();
+    uint32_t getWidth();
+    uint32_t getHeight();
+    std::pair<float, float> mapToPos(uint32_t intX, uint32_t intY);
+    std::pair<uint32_t, uint32_t> posToMap(float floatX, float floatY);
+
+    // deprecated
     void print();
-    // int8_t getOccupancy(uint32_t x, uint32_t y);
-    std::vector<Tile> getAdjacent(Tile t);
-    void BFS(float x, float y);
+    // deprecated
+    std::vector<Tile> getAdjacent(Tile s);
+    // deprecated
+    std::vector<std::vector<bool>> frontierScan();
 
 };
 

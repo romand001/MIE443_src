@@ -3,16 +3,18 @@
 #include <geometry_msgs/Twist.h>
 #include <kobuki_msgs/BumperEvent.h>
 #include <sensor_msgs/LaserScan.h>
+#include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <tf/transform_datatypes.h>
+//#include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 
 #include <boost/thread.hpp>
 
 #include <stdio.h>
 #include <cmath>
 
-#include <chrono>
+#include "map_class.hpp"
 
 #define N_BUMPER 3
 #define RAD2DEG(rad) ((rad)* 180./M_PI)
@@ -38,11 +40,16 @@ private:
     ros::Subscriber map_sub_;
     ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
+    ros::Publisher vis_pub_;
 
     geometry_msgs::Twist vel_;
 
     float angular_, linear_;
     float posX_, posY_, yaw_;
+
+    Map map_;
+    std::string base_link_frame_, map_frame_;
+    tf::TransformListener listener_;
 
     uint8_t bumper_[3] = {kobuki_msgs::BumperEvent::RELEASED, 
                          kobuki_msgs::BumperEvent::RELEASED, 
@@ -57,7 +64,7 @@ public:
 
     uint64_t secondsElapsed = 0;
 
-    MainNodeClass(ros::NodeHandle &node_handle, ros::NodeHandle& private_node_handle);
+    MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle);
     ~MainNodeClass() = default;
 
     void init();
@@ -71,6 +78,8 @@ public:
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 
     void timerCallback(const ros::TimerEvent& event);
+
+    void plotMarkers(std::map<float, float> frontierTiles);
 
 };
 
