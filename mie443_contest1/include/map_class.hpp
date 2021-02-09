@@ -4,6 +4,7 @@
 #include <map>
 #include <queue>
 #include <stack>
+#include <chrono>
 
 #define MINBORDERSIZE 7
 
@@ -29,7 +30,7 @@ private:
     uint32_t width_;
     uint32_t height_;
     std::vector<int8_t> data_;
-    // 2D vector of mappings between grid Tiles and pointers to all adjacent grid Tiles
+    // 2D vector of mappings between Tiles and their adjacent Tiles
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
 
 public:

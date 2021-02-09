@@ -116,11 +116,7 @@ void Map::info()
 
 // update map data
 // adjacency grid is also updated because it points to data_
-void Map::update(std::vector<int8_t> data) {
-    //ROS_INFO("before data update");
-    data_ = data;
-    //ROS_INFO("after data update");
-    }
+void Map::update(std::vector<int8_t> data) {data_ = data;}
 
 // find the closest frontier to the given x and y coordinates
 std::map<float, float> Map::closestFrontier(float xf, float yf) {
@@ -247,6 +243,7 @@ std::map<float, float> Map::closestFrontier(float xf, float yf) {
                     }
                     // uncomment this to plot robot coords as well:
                     // frontierCoords.insert(std::pair<float, float>(xf, yf));
+
                     return frontierCoords;
                 }
                 // otherwise we find the next frontier

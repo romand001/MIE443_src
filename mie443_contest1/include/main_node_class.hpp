@@ -14,8 +14,6 @@
 #include <stdio.h>
 #include <cmath>
 
-#include <chrono>
-
 #include "map_class.hpp"
 
 #define N_BUMPER 3

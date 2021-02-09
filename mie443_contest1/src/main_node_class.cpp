@@ -62,6 +62,10 @@ void MainNodeClass::laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
 void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
+
+    // begin timing
+    auto start = std::chrono::high_resolution_clock::now();
+
     // this code runs whenever a new occupancy grid map is published to the map topic
     
     // create new map object if received map size != current map size
@@ -78,6 +82,11 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     std::map<float, float> frontierList = map_.closestFrontier(posX_, posY_);
 
     plotMarkers(frontierList);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start); 
+
+    ROS_INFO("Map callback exec: %li ms", duration.count());
     
 
 }
