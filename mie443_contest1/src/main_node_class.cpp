@@ -79,7 +79,7 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     map_.update(msg->data);
 
     // get closest frontier
-    std::map<float, float> frontierList = map_.closestFrontier(posX_, posY_);
+    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
 
     plotMarkers(frontierList);
 
@@ -111,7 +111,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     }
 
     // getting the shortest path
-    std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_)
+    std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
     // converting path into velocity commands
 
@@ -127,7 +127,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
-void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles) 
+void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTiles)
 {
     visualization_msgs::Marker points;
     points.header.frame_id = "/map";
@@ -152,7 +152,6 @@ void MainNodeClass::plotMarkers(std::map<float, float> frontierTiles)
     }
     
     vis_pub_.publish(points);
-
 }
 
 

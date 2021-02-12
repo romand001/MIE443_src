@@ -43,7 +43,7 @@ public:
     //~Map();
     void info();
     void update(std::vector<int8_t> data);
-    std::map<float, float> closestFrontier(float xf, float yf);
+    std::vector<std::pair<float, float>> closestFrontier(float xf, float yf);
     std::vector<std::pair<float, float>> getPath(float posX, float posY);
     nav_msgs::MapMetaData getInfo();
     uint32_t getWidth();

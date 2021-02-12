@@ -119,7 +119,7 @@ void Map::info()
 void Map::update(std::vector<int8_t> data) {data_ = data;}
 
 // find the closest frontier to the given x and y coordinates
-std::map<float, float> Map::closestFrontier(float xf, float yf) 
+std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 {
     
 
@@ -147,7 +147,7 @@ std::map<float, float> Map::closestFrontier(float xf, float yf)
     if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
         ROS_ERROR("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
                     x, y, adjacencyGrid_.size(), adjacencyGrid_[0].size());
-        std::map<float, float> emptyMap;
+        std::vector<std::pair<float, float>> emptyMap;
         return emptyMap;
     }
 
@@ -237,10 +237,10 @@ std::map<float, float> Map::closestFrontier(float xf, float yf)
                 //ROS_INFO("traversed border and found %lu tiles", border.size());
 
                 if (border.size() >= MINBORDERSIZE) {
-                    std::map<float, float> frontierCoords;
+                    std::vector<std::pair<float, float>> frontierCoords;
 
                     for (auto frontier: border) {
-                        frontierCoords.insert(mapToPos(frontier.x, frontier.y));
+                        frontierCoords.push_back(mapToPos(frontier.x, frontier.y));
                     }
                     // uncomment this to plot robot coords as well:
                     // frontierCoords.insert(std::pair<float, float>(xf, yf));
@@ -270,7 +270,7 @@ std::map<float, float> Map::closestFrontier(float xf, float yf)
 
     }
     // if no frontier big enough was found, return an empty map of floats
-    std::map<float, float> emptyfloatMap;
+    std::vector<std::pair<float, float>> emptyfloatMap;
     return emptyfloatMap;
     
 

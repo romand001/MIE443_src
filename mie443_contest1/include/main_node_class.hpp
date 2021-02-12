@@ -79,7 +79,7 @@ public:
 
     void timerCallback(const ros::TimerEvent& event);
 
-    void plotMarkers(std::map<float, float> frontierTiles);
+    void plotMarkers(std::vector<std::pair<float, float>> frontierTiles);
 
 };
 
