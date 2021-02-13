@@ -116,7 +116,46 @@ void Map::info()
 
 // update map data
 // adjacency grid is also updated because it points to data_
-void Map::update(std::vector<int8_t> data) {data_ = data;}
+void Map::update(std::vector<int8_t> data) {
+    data_ = data;
+    updateDilated(2);
+}
+
+
+std::vector<int8_t> Map::generateDilated_(uint32_t radius, std::vector<int8_t> unsmoothed_data) {
+    if (radius < 1)
+        return unsmoothed_data;
+
+    std::vector<int8_t> new_data(unsmoothed_data.size());
+    for (int i = 0; i < data_.size(); i++) {
+        if (unsmoothed_data[i] == 100) {
+            new_data[i] = 100;
+            if (i % width_ > 0)
+                new_data[i - 1] = 100;
+            if (i % width_ < width_ - 1)
+                new_data[i + 1] = 100;
+            if (i - width_ > 0)
+                new_data[i - width_] = 100;
+            if (i + width_ < new_data.size())
+                new_data[i + width_] = 100;
+        }
+    }
+    return generateDilated_(radius - 1, new_data);
+}
+
+// update dilated map based on current data_ value
+void Map::updateDilated(uint32_t radius) {
+    data_smoothed_ = generateDilated_(radius, data_);
+}
+
+void Map::plotSmoothedMap(ros::Publisher publisher) {
+    nav_msgs::OccupancyGrid message;
+    message.header.frame_id = "/smoothed_map";
+//    message.header.stamp = ros::Time::now();
+    message.data = data_smoothed_;
+    message.info = map_info_;
+    publisher.publish(message);
+}
 
 // find the closest frontier to the given x and y coordinates
 std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)

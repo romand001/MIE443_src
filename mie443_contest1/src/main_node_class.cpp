@@ -21,6 +21,7 @@ void MainNodeClass::init()
     //odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
     vis_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
+    smoothed_map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("smoothed_map", 10);
 
     timer_ = pnh_.createTimer(ros::Duration(0.1), &MainNodeClass::timerCallback, this);
 
@@ -104,6 +105,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         posX_ = transform.getOrigin().x();
         posY_ = transform.getOrigin().y();
         yaw_ = tf::getYaw(transform.getRotation());
+        map_.plotSmoothedMap(smoothed_map_pub_);
     }
     catch (tf::TransformException &ex)
     {
@@ -114,11 +116,6 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
     // converting path into velocity commands
-
-
-
-
-
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);

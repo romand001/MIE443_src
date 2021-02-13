@@ -30,6 +30,8 @@ private:
     uint32_t width_;
     uint32_t height_;
     std::vector<int8_t> data_;
+    std::vector<int8_t> data_smoothed_;
+    std::vector<int8_t> generateDilated_(uint32_t radius, std::vector<int8_t> new_data);
 
     // 2D vector of mappings between Tiles and their adjacent Tiles
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
@@ -43,6 +45,7 @@ public:
     //~Map();
     void info();
     void update(std::vector<int8_t> data);
+    void updateDilated(uint32_t radius);
     std::vector<std::pair<float, float>> closestFrontier(float xf, float yf);
     std::vector<std::pair<float, float>> getPath(float posX, float posY);
     nav_msgs::MapMetaData getInfo();
@@ -58,6 +61,7 @@ public:
     // deprecated
     std::vector<std::vector<bool>> frontierScan();
 
+    void plotSmoothedMap(ros::Publisher publisher);
 };
 
 } // namespace end
