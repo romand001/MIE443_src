@@ -35,6 +35,7 @@ private:
 
     // 2D vector of mappings between Tiles and their adjacent Tiles
     std::vector<std::vector<AdjacencyRelationship>> adjacencyGrid_;
+    std::vector<std::vector<AdjacencyRelationship>> smoothedAdjacencyGrid_;
 
     // closest frontier map coordinates
     std::pair<uint32_t, uint32_t> frontier_;
@@ -53,6 +54,8 @@ public:
     uint32_t getHeight();
     std::pair<float, float> mapToPos(uint32_t intX, uint32_t intY);
     std::pair<uint32_t, uint32_t> posToMap(float floatX, float floatY);
+    void createAdjacencyRelationship_(std::vector<int8_t> data,
+                                      std::vector<std::vector<AdjacencyRelationship>> *adjacencyGrid);
 
     // deprecated
     void print();

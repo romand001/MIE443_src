@@ -25,46 +25,54 @@ Map::Map(nav_msgs::MapMetaData map_info)
     data_.resize(width_*height_, 0);
 
     // iterate over tiles to fill adjacency grid
+    createAdjacencyRelationship_(data_, &adjacencyGrid_);
+    createAdjacencyRelationship_(data_smoothed_, &smoothedAdjacencyGrid_);
+    ROS_INFO("finished creating adjacency relationships");
+}
+
+
+void Map::createAdjacencyRelationship_(std::vector<int8_t> data,
+                                       std::vector<std::vector<AdjacencyRelationship>> *adjacencyGrid) {
     for (int x=0; x < width_; x++) {
         std::vector<Map::AdjacencyRelationship> adjacencyCol;
         for (int y=0; y<height_; y++) {
             // declare vector for storing adjacent tiles
             std::vector<Map::Tile> adjacentTiles;
-            
+
             // fill adjacent tile vector
             if (y != 0) {
                 // up tile
                 Map::Tile u(x, y-1);
-                u.occ = &data_[0] + x + width_*(y-1);
+                u.occ = &data[0] + x + width_ * (y - 1);
                 adjacentTiles.push_back(u);
                 if (x != 0) {
                     // up+left tile
                     Map::Tile ul(x-1, y-1);
-                    ul.occ = &data_[0] + x-1 + width_*(y-1);
+                    ul.occ = &data[0] + x - 1 + width_ * (y - 1);
                     adjacentTiles.push_back(ul);
                 }
                 if (x != width_-1) {
                     // up+right tile
                     Map::Tile ur(x+1, y-1);
-                    ur.occ = &data_[0] + x+1 + width_*(y-1);
+                    ur.occ = &data[0] + x + 1 + width_ * (y - 1);
                     adjacentTiles.push_back(ur);
                 }
             }
             if (y != height_-1) {
                 // down tile
                 Map::Tile d(x, y+1);
-                d.occ = &data_[0] + x + width_*(y+1);
+                d.occ = &data[0] + x + width_ * (y + 1);
                 adjacentTiles.push_back(d);
                 if (x != 0) {
                     // down+left tile
                     Map::Tile dl(x-1, y+1);
-                    dl.occ = &data_[0] + x-1 + width_*(y+1);
+                    dl.occ = &data[0] + x - 1 + width_ * (y + 1);
                     adjacentTiles.push_back(dl);
                 }
                 if (x != width_-1) {
                     // down+right tile
                     Map::Tile dr(x+1, y+1);
-                    dr.occ = &data_[0] + x+1 + width_*(y+1);
+                    dr.occ = &data[0] + x + 1 + width_ * (y + 1);
                     adjacentTiles.push_back(dr);
                 }
             }
@@ -72,29 +80,29 @@ Map::Map(nav_msgs::MapMetaData map_info)
             if (x != 0) {
                 // left tile
                 Map::Tile l(x-1, y);
-                l.occ = &data_[0] + x-1 + width_*(y);
+                l.occ = &data[0] + x - 1 + width_ * (y);
                 adjacentTiles.push_back(l);
             }
             if (x != width_-1) {
                 // right tile
                 Map::Tile r(x+1, y);
-                r.occ = &data_[0] + x+1 + width_*(y);
+                r.occ = &data[0] + x + 1 + width_ * (y);
                 adjacentTiles.push_back(r);
             }
 
             // create an adjacency relationship object with the relationships found
             Map::Tile t(x, y);
-            t.occ = &data_[0] + x + width_*y;
+            t.occ = &data[0] + x + width_ * y;
             Map::AdjacencyRelationship rel(t, adjacentTiles);
             // push the relationship to the adjacency grid
             adjacencyCol.push_back(rel);
 
         }
         // push the current row to the grid
-        adjacencyGrid_.push_back(adjacencyCol);
+        adjacencyGrid->push_back(adjacencyCol);
     }
-    ROS_INFO("finished creating adjacency relationships");
 }
+
 
 // iterate over occupancy grid and print how many of each number occurs
 // useful for figuring out what's going on without printing thousands of numbers
