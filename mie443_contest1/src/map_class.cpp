@@ -151,6 +151,8 @@ std::vector<int8_t> Map::generateDilated_(uint32_t radius, std::vector<int8_t> u
                 new_data[i - width_] = 100; // up
             if (i + width_ < new_data.size()) // row + 1 < height
                 new_data[i + width_] = 100; // down
+        } else if (new_data[i] != 100) { // fill original unknowns and free spaces
+            new_data[i] = unsmoothed_data[i];
         }
     }
     return generateDilated_(radius - 1, new_data); // repeat for 1 smaller radius
@@ -245,9 +247,9 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
                 curr_sum += horizontal_sums[curr_ind + padding * width_];
                 sum_count += horizontal_sum_counts[curr_ind + padding * width_];
             }
-            if (j - padding - 1 >= 0 && unsmoothed_data[curr_ind - (padding - 1) * width_] >= 0) {
-                curr_sum -= horizontal_sums[curr_ind - (padding - 1) * width_];
-                sum_count -= horizontal_sum_counts[curr_ind - (padding - 1) * width_];
+            if (j - padding - 1 >= 0 && unsmoothed_data[curr_ind - (padding + 1) * width_] >= 0) {
+                curr_sum -= horizontal_sums[curr_ind - (padding + 1) * width_];
+                sum_count -= horizontal_sum_counts[curr_ind - (padding + 1) * width_];
             }
             if (unsmoothed_data[curr_ind] >= 0)
                 vertical_sums[curr_ind] = curr_sum;
@@ -259,8 +261,10 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 
     std::vector<int8_t> smoothed_data(unsmoothed_data.size()); // sums / counts to get the actual means
     for (int i = 0; i < horizontal_sums.size(); i++) {
-        if (unsmoothed_data[i] >= 0) {
-            smoothed_data[i] = horizontal_sums[i] / horizontal_sum_counts[i];
+        if (unsmoothed_data[i] < 0 || unsmoothed_data[i] == 100) {
+            smoothed_data[i] = unsmoothed_data[i];
+        }else {
+            smoothed_data[i] = vertical_sums[i] / vertical_sum_counts[i];
         }
     }
     return smoothed_data;
@@ -270,7 +274,7 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
     std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
-    data_smoothed_ = generateSmoothed_(3, data_dilated);
+    data_smoothed_ = generateSmoothed_(5, data_dilated);
 }
 
 void Map::plotSmoothedMap(ros::Publisher publisher) {
