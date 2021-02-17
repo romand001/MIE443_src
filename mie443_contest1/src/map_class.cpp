@@ -26,11 +26,13 @@ Map::Map(nav_msgs::MapMetaData map_info)
 
     // iterate over tiles to fill adjacency grid
     createAdjacencyRelationship_(data_, &adjacencyGrid_);
+    ROS_INFO("finished creating adjacency relationship for base map");
     createAdjacencyRelationship_(data_smoothed_, &smoothedAdjacencyGrid_);
-    ROS_INFO("finished creating adjacency relationships");
+    ROS_INFO("finished creating adjacency relationships for smoothed map");
 }
 
 
+// create a adjacency relationship out of the data vector, and store it in the vector pointed to by adjacencyGrid
 void Map::createAdjacencyRelationship_(std::vector<int8_t> data,
                                        std::vector<std::vector<AdjacencyRelationship>> *adjacencyGrid) {
     for (int x=0; x < width_; x++) {
@@ -127,33 +129,148 @@ void Map::info()
 void Map::update(std::vector<int8_t> data) {
     data_ = data;
     updateDilated(2);
+    ROS_INFO("finished creating smoothed map");
 }
 
 
+// create and return dilated map based on unsmoothed_data, where radius is the size of the dilation (robot size), in map units
 std::vector<int8_t> Map::generateDilated_(uint32_t radius, std::vector<int8_t> unsmoothed_data) {
-    if (radius < 1)
+    if (radius < 1) // dilation complete
         return unsmoothed_data;
 
     std::vector<int8_t> new_data(unsmoothed_data.size());
     for (int i = 0; i < data_.size(); i++) {
-        if (unsmoothed_data[i] == 100) {
-            new_data[i] = 100;
-            if (i % width_ > 0)
-                new_data[i - 1] = 100;
-            if (i % width_ < width_ - 1)
-                new_data[i + 1] = 100;
-            if (i - width_ > 0)
-                new_data[i - width_] = 100;
-            if (i + width_ < new_data.size())
-                new_data[i + width_] = 100;
+        if (unsmoothed_data[i] == 100) { // 100 means grid is filled
+            new_data[i] = 100; // fill centre
+            // fill the squares to one unit in each direction
+            if (i % width_ > 0) // col > 0 (i.e., col - 1 >= 0)
+                new_data[i - 1] = 100; // left
+            if (i % width_ + 1 < width_) // col + 1 < width
+                new_data[i + 1] = 100; // right
+            if (i - width_ > 0) // row - 1 > 0
+                new_data[i - width_] = 100; // up
+            if (i + width_ < new_data.size()) // row + 1 < height
+                new_data[i + width_] = 100; // down
         }
     }
-    return generateDilated_(radius - 1, new_data);
+    return generateDilated_(radius - 1, new_data); // repeat for 1 smaller radius
 }
+
+
+// pad the data to add extra rows and columns (actually not currently used)
+std::vector<int8_t> Map::padData_(uint32_t amount, std::vector<int8_t> data) {
+    std::vector<int8_t> new_data = data;
+    std::vector<int8_t> row1 = {data.begin(), data.begin() + width_};
+    std::vector<int8_t> rowl = {data.end() - width_, data.end()};
+    for (int i = 0; i < amount; i++) {
+        new_data.insert(new_data.begin(), row1.begin(), row1.end());
+        new_data.insert(new_data.end(), rowl.begin(), rowl.end());
+    }
+
+    data = new_data;
+    uint32_t new_width = width_ + 2 * amount;
+    for (int j = 0; j < height_ + 2 * amount; j++) {
+        for (int i = 0; i < amount; i++) {
+            new_data.insert(new_data.begin() + new_width * j, data[width_ * j]);
+            new_data.insert(new_data.begin() + new_width * (j + i + 1), data[width_ * j]);
+        }
+    }
+
+    return new_data;
+}
+
+
+// smooth the adjacency map using a mean filter; note that kernel_size must be *odd*
+std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int8_t> unsmoothed_data) {
+    int32_t padding = (kernel_size - 1) / 2; // amount that kernel extends past centre pixel on each side
+    std::vector<int32_t> horizontal_sums(unsmoothed_data.size()); // same size/grid meaning as data_; holds sum of map pixels (that are not -1 for unknown) within kernel range horizontally
+    std::vector<uint8_t> horizontal_sum_counts(unsmoothed_data.size()); // number of values added to the sum at this point
+    uint32_t curr_sum; // running sum
+    uint32_t sum_count; // running number of values in sum
+
+    for (int i = 0; i < height_; i++) { // iterate rows
+        curr_sum = 0;
+        sum_count = 0;
+
+        // starting sum for first element in row; contains sum over half kernel window including and to the right of the first element, except the last element because it will be added in the first iteration of the nested loop
+        for (int k = 0; k < padding; k++) {
+            if (unsmoothed_data[width_ * i + k] >= 0) {
+                curr_sum += unsmoothed_data[width_ * i + k];
+                sum_count++;
+            }
+        }
+
+        for (int j = 0; j < width_; j++) { // iterate columns
+            int32_t curr_ind = width_ * i + j;
+
+            // adding to running sum to the right if that cell is within bounds and not -1
+            if (j + padding < width_ && unsmoothed_data[curr_ind + padding] >= 0) {
+                curr_sum += unsmoothed_data[curr_ind + padding];
+                sum_count++;
+            }
+
+            // subtracting from running sum to the left if that cell is within bounds and not -1
+            if (j - padding - 1 >= 0 && unsmoothed_data[curr_ind - padding - 1] >= 0) {
+                curr_sum -= unsmoothed_data[curr_ind - padding - 1];
+                sum_count--;
+            }
+
+            // only update for cells that are currently not -1 to keep unknowns unknown
+            if (unsmoothed_data[curr_ind] >= 0)
+                horizontal_sums[curr_ind] = curr_sum;
+            else
+                horizontal_sums[curr_ind] = unsmoothed_data[curr_ind]; // keep -1
+
+            horizontal_sum_counts[curr_ind] = sum_count;
+        }
+    }
+
+    // repeat the process, but iterating first over columns and then rows, with appropriate indexing adjustments
+    std::vector<int32_t> vertical_sums(unsmoothed_data.size()); // sum of all values within 2D window of kernel size centred on each cell
+    std::vector<uint8_t> vertical_sum_counts(unsmoothed_data.size()); // corresponding counts
+
+    for (int i = 0; i < width_; i++) {
+        curr_sum = 0;
+        sum_count = 0;
+        for (int k = 0; k < padding; k++) {
+            if (unsmoothed_data[width_ * k + i] >= 0) {
+                curr_sum += horizontal_sums[width_ * k + i];
+                sum_count++;
+            }
+        }
+        for (int j = 0; j < height_; j++) {
+            int32_t curr_ind = width_ * j + i;
+
+            if (j + padding < height_ && unsmoothed_data[curr_ind + padding * width_] >= 0) {
+                curr_sum += horizontal_sums[curr_ind + padding * width_];
+                sum_count += horizontal_sum_counts[curr_ind + padding * width_];
+            }
+            if (j - padding - 1 >= 0 && unsmoothed_data[curr_ind - (padding - 1) * width_] >= 0) {
+                curr_sum -= horizontal_sums[curr_ind - (padding - 1) * width_];
+                sum_count -= horizontal_sum_counts[curr_ind - (padding - 1) * width_];
+            }
+            if (unsmoothed_data[curr_ind] >= 0)
+                vertical_sums[curr_ind] = curr_sum;
+            else
+                vertical_sums[curr_ind] = unsmoothed_data[curr_ind];
+            vertical_sum_counts[curr_ind] = sum_count;
+        }
+    }
+
+    std::vector<int8_t> smoothed_data(unsmoothed_data.size()); // sums / counts to get the actual means
+    for (int i = 0; i < horizontal_sums.size(); i++) {
+        if (unsmoothed_data[i] >= 0) {
+            smoothed_data[i] = horizontal_sums[i] / horizontal_sum_counts[i];
+        }
+    }
+    return smoothed_data;
+}
+
 
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
-    data_smoothed_ = generateDilated_(radius, data_);
+    std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
+    data_smoothed_ = generateSmoothed_(3, data_dilated);
 }
 
 void Map::plotSmoothedMap(ros::Publisher publisher) {
