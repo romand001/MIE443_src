@@ -20,6 +20,11 @@
 #define RAD2DEG(rad) ((rad)* 180./M_PI)
 #define DEG2RAD(deg) ((deg)* M_PI/180.)
 
+// defines for velocity control system
+#define QUEUE_SIZE 5 // first and last queue errors used for derivative term
+#define KP 1.0 // proportional gain
+#define KD 1.0 // derivative gain
+
 #ifndef DESIRED_ANGLE
 #define DESIRED_ANGLE 5
 #endif
@@ -46,6 +51,7 @@ private:
 
     float angular_, linear_;
     float posX_, posY_, yaw_;
+    std::queue<float> yawErrorQueue_;
 
     Map map_;
     std::string base_link_frame_, map_frame_;
