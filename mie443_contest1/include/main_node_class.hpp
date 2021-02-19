@@ -41,6 +41,7 @@ private:
     //ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
     ros::Publisher vis_pub_;
+    ros::Publisher smoothed_map_pub_;
 
     geometry_msgs::Twist vel_;
 
@@ -80,7 +81,6 @@ public:
     void timerCallback(const ros::TimerEvent& event);
 
     void plotMarkers(std::vector<std::pair<float, float>> frontierTiles);
-
 };
 
 }
