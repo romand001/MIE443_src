@@ -116,7 +116,21 @@ void Map::info()
 
 // update map data
 // adjacency grid is also updated because it points to data_
-void Map::update(std::vector<int8_t> data) {data_ = data;}
+void Map::update(std::vector<int8_t> data) {
+    data_ = data;
+    // *****add bumper data to data_
+    // *****cycle through data_ and make invis coords equal 100
+
+    for (int i=0; i < invis.size(); i++) {
+        int xBump = invis[i].first;
+        int yBump = invis[i].second;
+        data_[xBump + width_*(yBump)] = 100; 
+    }
+
+
+    }
+
+
 
 // find the closest frontier to the given x and y coordinates
 std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)

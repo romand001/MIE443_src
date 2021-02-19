@@ -34,7 +34,7 @@ void MainNodeClass::init()
 void MainNodeClass::bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
     // this code runs whenever new bumper collision data is published to the 
-    //      mobile_base/events/bumper topic
+    // mobile_base/events/bumper topic
     // updating the private bumper_ variable should be all that is needed here
     bumper_[msg->bumper] = msg->state;
 }
@@ -118,6 +118,58 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
 
 
+
+
+  
+  // bumper response 
+
+    // use index of bumpers, to see which bumper is pressed and then based on that determine 
+    // rotation amount.  
+
+    // 5cm per tile round up, add buffer, get rob radius to determine how many tiles in between the robot centre and the wall
+    // account for yaw to determine coord. 18cm radius on turtlebot. use 4 tiles as spacing 
+
+    // Check if any of the bumpers were pressed.
+    bool any_bumper_pressed = false;
+    for (uint32_t b_idx = 0; b_idx < N_BUMPER; b_idx++) {
+        any_bumper_pressed |= (bumper_[b_idx] == kobuki_msgs::BumperEvent::PRESSED);
+    }
+
+    // Control logic after bumpers are being pressed.
+    if (!any_bumper_pressed) {
+        
+        //***normal operation code goes here***
+    
+    
+    }
+    
+        
+    else {
+        // ***invis wall is hit***
+
+        float bumpLocX, bumpLocY, bumpAngle;
+        float radius = 0.354;  //radius of the robot [m], distance from the center of robot to bumper sensor 
+        
+        if (bumper_[kobuki_msgs::BumperEvent::LEFT] == kobuki_msgs::BumperEvent::PRESSED) {
+            bumpAngle = yaw_ + M_PI_2;
+        }
+
+        else if (bumper_[kobuki_msgs::BumperEvent::CENTER] == kobuki_msgs::BumperEvent::PRESSED) {
+            bumpAngle = yaw_; 
+        }
+
+        else if (bumper_[kobuki_msgs::BumperEvent::RIGHT] == kobuki_msgs::BumperEvent::PRESSED) {
+            bumpAngle = yaw_ + 3*M_PI_2; 
+        } 
+        
+        bumpLocX = posX_ + radius*cos(bumpAngle);
+        bumpLocY = posY_ + radius*sin(bumpAngle);
+
+        std::pair <uint32_t, uint32_t> bumpCoords = map_.mapToPos(bumpLocX, bumpLocY); 
+        map_.invis.push_back(bumpCoords);
+        
+    } 
+    
 
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;

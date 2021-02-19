@@ -81,6 +81,8 @@ public:
 
     void plotMarkers(std::vector<std::pair<float, float>> frontierTiles);
 
+    void plotMarkersBump(std::vector<std::pair<float, float>> invis);
+
 };
 
 }
