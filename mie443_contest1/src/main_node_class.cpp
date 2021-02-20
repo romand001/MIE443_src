@@ -115,7 +115,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     // getting the shortest path
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
     
-    while(Vis_path_counter<pathPoints.size())
+    if(Vis_path_counter<pathPoints.size())
     {
     if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0005)
     {
