@@ -114,7 +114,20 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
     // converting path into velocity commands
+    /*declare array to store visited paths Vis_path
+    angular_command = atan2(dy/dx)-yaw
+    if(dist<certain value)
+    {
+     linear vel = 0.0
+     angular_command =360
+    }
+    else {
+    linear vel = set value
 
+
+    }
+    
+    */
 
 
 
