@@ -1,5 +1,7 @@
 #include "main_node_class.hpp"
 
+int Vis_path_counter =0;
+
 namespace mainSpace {
 
 MainNodeClass::MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle)
@@ -113,30 +115,22 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     // getting the shortest path
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
-    // converting path into velocity commands
-    /*declare array to store visited paths Vis_path
-    angular_command = atan2(dy/dx)-yaw
-    if(dist<certain value)
+    if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0005)
     {
-     linear vel = 0.0
-     angular_command =360
-    }
-    else {
-    linear vel = set value
-
+        Vis_path_counter+=1; //skips frontier point if too close to robot
 
     }
-    
-    */
+    //set angular rotation: tan^-1((y2-y1)/(x2-x1)) - yaw angle
+    angular_= atan2((pathPoints[Vis_path_counter].second - posY_),(pathPoints[Vis_path_counter].first - posX_))-yaw_; 
 
-
-
+    linear_ = 0.01 ; // set linear speed to 1 cm/s 
 
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
-    vel_pub_.publish(vel_);
+    vel_pub_.publish(vel_);   // publish to ros
 
-    //update the elapsed time
+    Vis_path_counter+=1; // add one to counter so it takes next path
+     //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
