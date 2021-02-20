@@ -117,7 +117,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
     if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0005)
     {
-        Vis_path_counter+=1; //skips frontier point if too close to robot
+        Vis_path_counter+=1; //skips frontier point if too close to robot (cloer than 1/2 cm)
 
     }
     //set angular rotation: tan^-1((y2-y1)/(x2-x1)) - yaw angle
