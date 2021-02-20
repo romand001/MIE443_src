@@ -117,16 +117,25 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     
     if(Vis_path_counter<pathPoints.size())
     {
-    if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0005)
+    if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0025)
     {
         Vis_path_counter+=1; //skips frontier point if too close to robot (cloer than 1/2 cm)
 
     }
     //set angular rotation: tan^-1((y2-y1)/(x2-x1)) - yaw angle
     angular_= atan2((pathPoints[Vis_path_counter].second - posY_),(pathPoints[Vis_path_counter].first - posX_))-yaw_; 
+    // set linear to 0 so that the robot can rotate
+    linear_ =0.0;
+    // publish rotation with 0 linear to ross
+    vel_.angular.z = angular_;
+    vel_.linear.x = linear_;
+    vel_pub_.publish(vel_);   // publish to ros
+    
+    angular_ = 0.0;
 
-    linear_ = 0.01 ; // set linear speed to 1 cm/s 
+    linear_ = 0.1 ; // set linear speed to 1 cm/s 
 
+    // publish linear velocity 
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);   // publish to ros
