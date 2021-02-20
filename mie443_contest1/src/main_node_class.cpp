@@ -114,7 +114,9 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
     // getting the shortest path
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
-
+    
+    while(Vis_path_counter<pathPoints.size())
+    {
     if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0005)
     {
         Vis_path_counter+=1; //skips frontier point if too close to robot (cloer than 1/2 cm)
@@ -130,6 +132,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     vel_pub_.publish(vel_);   // publish to ros
 
     Vis_path_counter+=1; // add one to counter so it takes next path
+    }
+    
      //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
