@@ -115,11 +115,10 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     // getting the shortest path
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
     
-    if(Vis_path_counter<pathPoints.size())
-    {
+
     if(sqrt(pow((pathPoints[Vis_path_counter].second - posY_),2)+pow((pathPoints[Vis_path_counter].first - posX_),2))<0.0025)
     {
-        Vis_path_counter+=1; //skips frontier point if too close to robot (cloer than 1/2 cm)
+        Vis_path_counter=1; //skips frontier point if too close to robot (cloer than 2.5 cm)
 
     }
     //set angular rotation: tan^-1((y2-y1)/(x2-x1)) - yaw angle
@@ -130,18 +129,18 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);   // publish to ros
-    
+    // set angular to 0 since robot has already rotated
     angular_ = 0.0;
 
-    linear_ = 0.1 ; // set linear speed to 1 cm/s 
+    linear_ = 0.1 ; // set linear speed to 10 cm/s 
 
     // publish linear velocity 
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);   // publish to ros
 
-    Vis_path_counter+=1; // add one to counter so it takes next path
-    }
+    Vis_path_counter=0; // set counter to zero for when the next timercallback is invoked
+    
     
      //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
