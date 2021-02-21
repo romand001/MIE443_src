@@ -279,10 +279,75 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 // returns a path for robot to follow to the frontier
 // takes X and Y robot positions, returns vector of coordinates
 // makes use of private members occupancy grid (pre-processed version) and frontier coordinates
+
+struct Tile_Info{
+    float x_pos;
+    float y_pos;
+    float x_par;
+    float y_par;
+    float start_dis;
+    float end_dis;
+    float total_dis;
+    bool checked;
+};
+
+float end_distance(float first, float second, float new_posX, float new_posY) {
+    float tot_X = first - new_posX;
+    float tot_Y = second - new_posY;
+    float tot_Xsq = pow(tot_X, 2);
+    float tot_Ysq = pow(tot_Y, 2);
+    float tot_XYsq = tot_Xsq + tot_Ysq;
+
+    return sqrt(tot_XYsq);
+}
+    
+float start_distance(float posX, float posY, float new_posX, float new_posY) {
+    float tot_X = new_posX - posX;
+    float tot_Y = new_posY - posY;
+    float tot_Xsq = pow(tot_X, 2);
+    float tot_Ysq = pow(tot_Y, 2);
+    float tot_XYsq = tot_Xsq + tot_Ysq;
+
+    return sqrt(tot_XYsq);
+}
+
+float tot_distance(float first, float second, float new_posX, float new_posY, float posX, float posY) {
+    return (end_distance(first, second, new_posX, new_posY) + start_distance(posX, posY, new_posX, new_posY));
+}
+
 std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
 {
     // for now: use occupancyGrid_ and frontier_
     // get x and y from frontier with frontier.first and frontier.second
+
+    
+    float weight = 0;
+
+    //float start_entry = start_distance(posX, posY);
+
+
+    std::vector<Tile_Info> tiles;
+
+    Tile_Info start;
+    start.x_pos = posX;
+    start.y_pos = posY;
+    start.x_par = posX;
+    start.y_par = posY;
+    start.start_dis = 0;
+    start.end_dis = end_distance(frontier_.first, frontier_.second, posX, posY);
+    start.total_dis = start.start_dis + start.end_dis;
+    start.checked = false;
+
+    Tile_Info current_tile = start;
+
+
+    bool path_found = false;
+
+    while (path_found == false) {
+
+
+
+    }
 
 
 }
