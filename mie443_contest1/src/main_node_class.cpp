@@ -115,6 +115,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     // getting the shortest path
     std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
+    
+
     // converting path into velocity commands
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
