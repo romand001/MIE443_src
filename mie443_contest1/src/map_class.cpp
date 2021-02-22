@@ -5,11 +5,21 @@ namespace mainSpace {
 // constructor for the Tile struct, sets the coord and occupancy
 Map::Tile::Tile(uint32_t xt, uint32_t yt) 
     :x(xt), 
-    y(yt) {};
+    y(yt) {}
 
 Map::AdjacencyRelationship::AdjacencyRelationship(Map::Tile selft, std::vector<Map::Tile> adjt)
     :self(selft),
     adjacentTiles(adjt) {}
+
+Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, Tile_Info* parentT, int8_t occ)
+    :x(xt),
+    y(yt),
+    parent(parentT)
+{
+    pathLength = parent->pathLength
+                + sqrt(abs(x - parent->x) + abs(y - parent->y))
+                + weightFactor * occ;
+}
 
 // empty constructor for initializing map without map_info
 Map::Map() {}
@@ -448,21 +458,6 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 // takes X and Y robot positions, returns vector of coordinates
 // makes use of private members occupancy grid (pre-processed version) and frontier coordinates
 
-
-// create struct for each tile
-struct Tile_Info{
-    float x_pos;
-    float y_pos;
-    Tile_Info *parent;
-    float start_dis;
-    float end_dis;
-    float total_dis;
-    float weighted_total;
-    float weighted_start;
-    float weighted_end;
-    bool checked;
-};
-
 // equation to calculate the distance from the current tile to the frontier
 float end_distance(float first, float second, float new_posX, float new_posY) {
     float tot_X = first - new_posX;
@@ -486,7 +481,7 @@ float start_distance(float posX, float posY, float new_posX, float new_posY) {
 }
 
 // function to make a new struct entry for a new tile
-Tile_Info set_tile_info(float x, float y, Tile_Info* parent, float start_distance, float end_x, float end_y, float tile_val){
+Tile_Info create_tile_info(float x, float y, Tile_Info* parent, float start_distance, float end_x, float end_y, float tile_val){
     Tile_Info new_tile;
     new_tile.x_pos = x;
     new_tile.y_pos = y;
@@ -583,7 +578,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
                     bool valid = *smoothedAdjacencyGrid_[x+i][y+j].self.occ != -1 && *smoothedAdjacencyGrid_[x+i][y+j].self.occ != 100;
                     bool in_map = tile_map.count(x+i + width_*(y+j));
-                    float neighbour_dis = sqrt(abs(i)+abs(j);
+                    float neighbour_dis = sqrt(abs(i)+abs(j));
             
 
                     if (valid && !in_map){

@@ -25,6 +25,20 @@ class Map {
         AdjacencyRelationship(Tile selft, std::vector<Tile> adjt);
     };
 
+    struct Tile_Info {
+        uint32_t x;
+        uint32_t y;
+        Tile_Info* parent;
+        float pathLength;
+        float goalDist;
+        float totalCost;
+        bool checked;
+
+        const float weightFactor = 0.01;
+
+        Tile_Info(uint32_t xt, uint32_t yt, Tile_Info* parentT, int8_t occ);
+    };
+
 private:
     nav_msgs::MapMetaData map_info_;
     uint32_t width_;
