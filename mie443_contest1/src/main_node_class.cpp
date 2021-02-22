@@ -206,5 +206,31 @@ void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTil
     vis_pub_.publish(points);
 }
 
+void MainNodeClass::plotMarkersBump(std::vector<std::pair<float, float>> invis)
+{
+    visualization_msgs::Marker points;
+    points.header.frame_id = "/map";
+    points.header.stamp = ros::Time::now();
+    points.ns = "points";
+    points.action = visualization_msgs::Marker::ADD;
+    points.pose.orientation.w = 1.0;
+    points.id = 0;
+    points.type = visualization_msgs::Marker::POINTS;
+    points.scale.x = 0.05;
+    points.scale.y = 0.05;
+    points.color.a = 1.0;
+    points.color.b = 1.0;
+
+    for (auto bumpCoords:invis) {
+        geometry_msgs::Point p;
+        p.x = bumpCoords.first;
+        p.y = bumpCoords.second;
+        //ROS_INFO("plotting point at %f, %f", p.x, p.y);
+        p.z = 0.02;
+        points.points.push_back(p);
+    }
+    
+    vis_pub_.publish(points);
+}
 
 } //namespace end
