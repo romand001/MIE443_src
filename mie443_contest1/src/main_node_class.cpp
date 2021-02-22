@@ -148,7 +148,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         // ***invis wall is hit***
 
         float bumpLocX, bumpLocY, bumpAngle;
-        float radius = 0.354;  //radius of the robot [m], distance from the center of robot to bumper sensor 
+        float radius = 0.18;  //radius of the robot [m], distance from the center of robot to bumper sensor 
         
         if (bumper_[kobuki_msgs::BumperEvent::LEFT] == kobuki_msgs::BumperEvent::PRESSED) {
             bumpAngle = yaw_ + M_PI_2;
@@ -209,7 +209,7 @@ void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTil
 void MainNodeClass::plotMarkersBump(std::vector<std::pair<float, float>> invis)
 {
     visualization_msgs::Marker points;
-    points.header.frame_id = "/map";
+    points.header.frame_id = "/map"; // maybe change this 
     points.header.stamp = ros::Time::now();
     points.ns = "points";
     points.action = visualization_msgs::Marker::ADD;
