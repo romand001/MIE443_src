@@ -11,7 +11,21 @@ Map::AdjacencyRelationship::AdjacencyRelationship(Map::Tile selft, std::vector<M
     :self(selft),
     adjacentTiles(adjt) {}
 
-Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, Tile_Info* parentT, int8_t occ)
+// constructor without parent (for start)
+Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, 
+                          uint32_t end_x, uint32_t end_y, int8_t occ)
+    :x(xt),
+    y(yt)
+{
+    pathLength = weightFactor * occ;
+    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    totalCost = pathLength + endDist;
+    checked = false;
+}
+
+// constructor with parent
+Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, 
+                          Tile_Info* parentT, int8_t occ)
     :x(xt),
     y(yt),
     parent(parentT)
@@ -19,6 +33,9 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, Tile_Info* parentT, int8_t o
     pathLength = parent->pathLength
                 + sqrt(abs(x - parent->x) + abs(y - parent->y))
                 + weightFactor * occ;
+    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    totalCost = pathLength + endDist;
+    checked = false;
 }
 
 // empty constructor for initializing map without map_info
@@ -458,226 +475,89 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 // takes X and Y robot positions, returns vector of coordinates
 // makes use of private members occupancy grid (pre-processed version) and frontier coordinates
 
-// equation to calculate the distance from the current tile to the frontier
-float end_distance(float first, float second, float new_posX, float new_posY) {
-    float tot_X = first - new_posX;
-    float tot_Y = second - new_posY;
-    float tot_Xsq = pow(tot_X, 2);
-    float tot_Ysq = pow(tot_Y, 2);
-    float tot_XYsq = tot_Xsq + tot_Ysq;
-
-    return sqrt(tot_XYsq);
-}
-
-// equation to calculate the distance from the current tile to the starting location    
-float start_distance(float posX, float posY, float new_posX, float new_posY) {
-    float tot_X = new_posX - posX;
-    float tot_Y = new_posY - posY;
-    float tot_Xsq = pow(tot_X, 2);
-    float tot_Ysq = pow(tot_Y, 2);
-    float tot_XYsq = tot_Xsq + tot_Ysq;
-
-    return sqrt(tot_XYsq);
-}
-
-// function to make a new struct entry for a new tile
-Tile_Info create_tile_info(float x, float y, Tile_Info* parent, float start_distance, float end_x, float end_y, float tile_val){
-    Tile_Info new_tile;
-    new_tile.x_pos = x;
-    new_tile.y_pos = y;
-    new_tile.parent = parent;
-    new_tile.start_dis = start_distance;
-    new_tile.end_dis = end_distance(end_x, end_y, x, y);
-    new_tile.total_dis = new_tile.start_dis + new_tile.end_dis;
-    new_tile.weighted_total = weighted_total(new_tile.weighted_start, new_tile.weighted_end);
-    new_tile.weighted_start = weighted_start(tile_val, new_tile.start_dis);
-    new_tile.weighted_end = weighted_end(tile_val, new_tile.end_dis);
-    new_tile.checked = false;
-
-    return new_tile;
-
-}
-
-// adds the total distance and weighted value together
-float weighted_total(float weighted_start, float weighted_end){
-    float weight_tot_val = weighted_start + weighted_end;
-    
-    return weight_tot_val;
-}
-
-// adds the start distance and weighted value together
-float weighted_start(float tile_val, float start_distance){
-    float weight_start_val = tile_val + start_distance;
-
-    return weight_start_val;
-
-}
-
-// adds the end distance and weighted value together
-float weighted_end(float tile_val, float end_distance){
-    float weight_end_val = tile_val + end_distance;
-
-    return weight_end_val;
-}
-
 std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
 {
-    std::pair<uint32_t, uint32_t> robot_start = posToMap(posX, posY);
-    // for now: use occupancyGrid_ and frontier_
-    // get x and y from frontier with frontier.first and frontier.second
+    std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
 
-    std::vector<std::vector<std::pair<bool,float>>> tile_state(
-        width_,
-        std::vector<std::pair<bool,float>>(height_, std::make_pair(false,9999.0))
-    );
+    uint32_t endX = frontier_.first, endY = frontier_.second;
 
-    // creates vector of tiles
-    std::vector<Tile_Info> tiles;
-
-    std::map<uint32_t,Tile_Info> tile_map;
+    std::map<uint32_t, Map::Tile_Info> tileMap;
 
 
     // creates initial struct entry for the starting position
-    Tile_Info start;
-    start.x_pos = robot_start.first;
-    start.y_pos = robot_start.second;
+    Map::Tile_Info start(robotStart.first, robotStart.second, endX, endY,
+                         *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ);
     start.parent = &start;
-    start.start_dis = 0;
-    start.end_dis = end_distance(frontier_.first, frontier_.second, robot_start.first, robot_start.second);
-    start.total_dis = start.start_dis + start.end_dis;
-    start.weighted_total = weighted_total(*smoothedAdjacencyGrid_[robot_start.first][robot_start.second].self.occ,start.total_dis);
-    start.weighted_start = weighted_start(*smoothedAdjacencyGrid_[robot_start.first][robot_start.second].self.occ, start.start_dis);
-    start.checked = false;
-    
-    tiles.push_back(start);
 
-    Tile_Info current_tile = start;
-
-
-    bool path_found = false;
+    // set the current tile to start
+    Map::Tile_Info curTile = start;
 
     // loop to check every adjascent tile and create a struct entry for it
-    //ran until it reaches frontier tile
-    while (path_found == false) {
+    // run until it reaches frontier tile
+    while (!tileMap.empty()) {
 
-        float x = current_tile.x_pos;
-        float y = current_tile.y_pos;
+        // set current tile as the one with lowest total cost in tileMap
+        float lowestCost = 9999999.0;
+        for (auto tilePair: tileMap) {
+            if (!tilePair.second.checked && tilePair.second.totalCost < lowestCost) {
+                lowestCost = tilePair.second.totalCost;
+                Map::Tile_Info curTile = tilePair.second;
+            }
+        }
+        curTile.checked = true; // set current tile to checked
+
+        // exit loop if current tile is frontier
+        if (curTile.x == endX && curTile.y == endY) break;
+
+        uint32_t x = curTile.x, y = curTile.y;
  
-        for (int i = -1; i<= 1; i++){
-            for (int j = -1; j<= 1; j++){
-                if(i!=0 && j!=0){
-                    // if (*smoothedAdjacencyGrid_[x+i][y+j].self.occ != -1 && *smoothedAdjacencyGrid_[x+i][y+j].self.occ != 100 && tile_state[x+i][y+j].first == false) {
-                    //     float neighbour_dis = sqrt(abs(i)+abs(j);
-                    //     Tile_Info adjacent_tile = set_tile_info(x+i, y+j, &current_tile, current_tile.start_dis + neighbour_dis, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x+i][y+j].self.occ);
-                        
-                    //     if (current_tile.weighted_start + neighbour_dis < tile_state[x+i][y+j].second){
-                    //     tiles.push_back(adjacent_tile);
-                    //     tile_state[x+i][y+j].second = current_tile.weighted_start + neighbour_dis;
-                    //     }
-                    // }
+        // iterate over neighbours of curTile
+        for (int i = -1; i<= 1; i++) {
+            for (int j = -1; j<= 1; j++) {
+                if (i && j) {
+                    uint32_t nx = x + i, ny = y + j; // neighbour coords
+                    int8_t occ = *smoothedAdjacencyGrid_[nx][ny].self.occ; // neighbour weight
 
-                    bool valid = *smoothedAdjacencyGrid_[x+i][y+j].self.occ != -1 && *smoothedAdjacencyGrid_[x+i][y+j].self.occ != 100;
-                    bool in_map = tile_map.count(x+i + width_*(y+j));
-                    float neighbour_dis = sqrt(abs(i)+abs(j));
-            
+                    // grab neighbour iterator to check if neighbour exists in map, check traversability
+                    std::map<uint32_t, mainSpace::Map::Tile_Info>::iterator curNeighbourIt = tileMap.find(nx + width_*ny);
+                    bool inMap = curNeighbourIt != tileMap.end();
+                    bool valid = occ != -1 && occ != 100;
 
-                    if (valid && !in_map){
-                        Tile_Info new_adjacent_tile = set_tile_info(x+i, y+j, &current_tile, current_tile.weighted_start + neighbour_dis, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x+i][y+j].self.occ);
-                        tile_map[x+i + width_*(y+j)] = new_adjacent_tile;
+                    // if not traversable OR (neighbour exists AND has been checked), skip it
+                    // have to check if neighbour exists before getting its checked status
+                    if (!valid || (inMap && curNeighbourIt->second.checked)) continue;
 
+                    // create new neighbour, decide later if it is new or should replace current one
+                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, &curTile, occ);
+
+                    // if no neigbour at these coords, add neighbour to map
+                    if (!inMap) {
+                        tileMap.emplace(nx + width_*ny, newNeighbour);
                     }
-
-                    else if (valid && in_map){
-                        Tile_Info neighbour_tile_info = tile_map[x+i + width_*(y+j)];
-                        if (!neighbour_tile_info.checked && current_tile.weighted_start + neighbour_dis < neighbour_tile_info.weighted_start){
-                            neighbour_tile_info.weighted_start = current_tile.weighted_start + neighbour_dis;
-                            neighbour_tile_info.parent = &current_tile;
-                            neighbour_tile_info.weighted_total = neighbour_tile_info.weighted_start + neighbour_tile_info.weighted_end;  
+                    else {
+                        // grab current neighbour for path length comparison
+                        Map::Tile_Info curNeighbour = curNeighbourIt->second;
+                        if (newNeighbour.pathLength < curNeighbour.pathLength) {
+                            tileMap.erase(nx + width_*ny);
+                            tileMap.emplace(nx + width_*ny, newNeighbour);
                         }
                     }
-                    // if (*smoothedAdjacencyGrid_[x+i][y+j].self.occ != -1 && *smoothedAdjacencyGrid_[x+i][y+j].self.occ != 100 && tile_map[x + width_*y].checked == false)
+                    
                 }
             }
         }
 
-        current_tile.checked = true;
-
-
-        if (*smoothedAdjacencyGrid_[x][y+1].self.occ != -1 && *smoothedAdjacencyGrid_[x][y+1].self.occ != 100 && ) {
-            tiles.push_back(set_tile_info(x, y+1, &current_tile, current_tile.start_dis + 1, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x][y+1].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x+1][y+1].self.occ != -1 && *smoothedAdjacencyGrid_[x+1][y+1].self.occ != 100) {
-            tiles.push_back(set_tile_info(x+1, y+1, &current_tile, current_tile.start_dis + sqrt(2), frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x+1][y+1].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x+1][y].self.occ != -1 && *smoothedAdjacencyGrid_[x+1][y].self.occ != 100) {
-            tiles.push_back(set_tile_info(x+1, y, &current_tile, current_tile.start_dis + 1, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x+1][y].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x+1][y-1].self.occ != -1 && *smoothedAdjacencyGrid_[x+1][y-1].self.occ != 100) {
-            tiles.push_back(set_tile_info(x+1, y-1, &current_tile, current_tile.start_dis + sqrt(2), frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x+1][y-1].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x][y-1].self.occ != -1 && *smoothedAdjacencyGrid_[x][y-1].self.occ != 100) {
-            tiles.push_back(set_tile_info(x, y-1, &current_tile, current_tile.start_dis + 1, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x][y-1].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x-1][y-1].self.occ != -1 && *smoothedAdjacencyGrid_[x-1][y-1].self.occ != 100) {
-            tiles.push_back(set_tile_info(x-1, y-1, &current_tile, current_tile.start_dis + sqrt(2), frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x-1][y-1].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x-1][y].self.occ != -1 && *smoothedAdjacencyGrid_[x-1][y].self.occ != 100) {
-            tiles.push_back(set_tile_info(x-1, y, &current_tile, current_tile.start_dis + 1, frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x-1][y].self.occ));
-        }
-
-        if (*smoothedAdjacencyGrid_[x-1][y+1].self.occ != -1 && *smoothedAdjacencyGrid_[x-1][y+1].self.occ != 100) {
-            tiles.push_back(set_tile_info(x-1, y+1, &current_tile, current_tile.start_dis + sqrt(2), frontier_.first, frontier_.second, *smoothedAdjacencyGrid_[x-1][y+1].self.occ));
-        }
-
-        current_tile.checked = true;
-
-        float lowest_tot = 999999.0;
-    
-        //finds tile with lowest total weight and distance
-        for (int i = 0; i<tiles.size(); i++){
-            if (tiles[i].checked == false && tiles[i].weighted_total<lowest_tot){
-                current_tile = tiles[i];
-                lowest_tot = tiles[i].weighted_total;
-            }
-
-            if (tiles[i].end_dis == 0){
-                path_found = true;
-            }
-
-        }
-
 
     }
 
-    bool shortest_path_found = false;
+    std::vector<std::pair<float, float>> backPath;
 
-    while (shortest_path_found == false){
-
-        // go through every entry in the vector and find lowest total distance struct
-        float lowest_struct_tot = 99999;
-        float lowest_struct_x;
-        float lowest_struct_y;
-
-        for (int i = 0; i<tiles.size(); i++){
-            if (tiles[i].checked == false && tiles[i].weighted_total<lowest_struct_tot){
-                lowest_struct_x = tiles[i].x_pos;
-                lowest_struct_y = tiles[i].y_pos;
-                lowest_struct_tot = tiles[i].weighted_total
-            }
-        }
-
-        // check if adjacent tile is in the vector
-
-
-        // check every adjacent tile and if the tile start distance + the distance to the adjacent tile is less than the adjacent tile start distance
-        // update start distance of adjacent tile and make current tile the parent
+    while (curTile.parent != &curTile) {
+        backPath.push_back(mapToPos(curTile.x, curTile.y));
+        curTile = *curTile.parent;
     }
+
+    return backPath;
 
 }
 
