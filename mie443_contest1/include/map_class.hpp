@@ -28,7 +28,7 @@ class Map {
     struct Tile_Info {
         uint32_t x;
         uint32_t y;
-        Tile_Info* parent;
+        struct Tile_Info* parent;
         float pathLength;
         float endDist;
         float totalCost;
