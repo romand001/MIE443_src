@@ -47,7 +47,6 @@ private:
     nav_msgs::MapMetaData map_info_;
     uint32_t width_;
     uint32_t height_;
-    std::vector<int8_t> data_;
     std::vector<int8_t> data_smoothed_;
 
     // 2D vector of mappings between Tiles and their adjacent Tiles
@@ -77,8 +76,10 @@ public:
     uint32_t getHeight();
     std::pair<float, float> mapToPos(uint32_t intX, uint32_t intY);
     std::pair<uint32_t, uint32_t> posToMap(float floatX, float floatY);
+    int8_t get_map_value(uint32_t x, uint32_t y);
 
     std::vector<std::pair<uint32_t, uint32_t>> invis;
+    std::vector<int8_t> data_;
 
     // deprecated
     void print();
@@ -88,6 +89,8 @@ public:
     std::vector<std::vector<bool>> frontierScan();
 
     void plotSmoothedMap(ros::Publisher publisher);
+
+    std::pair<float, float> explore(uint64_t time);
 };
 
 } // namespace end

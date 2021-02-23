@@ -90,12 +90,12 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     }
 
     // update data array of map
-    map_.update(msg->data);
-
-    // get closest frontier
-    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
-
-    plotFrontiers(frontierList);
+//    map_.update(msg->data);
+//
+//    // get closest frontier
+//    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
+//
+//    plotFrontiers(frontierList);
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start); 
@@ -149,39 +149,57 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
     // normal operation
     if (!any_bumper_pressed && receivedMap_) {
-        
-        // getting the shortest path
-        std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
-        plotPath(pathPoints);
+        std::pair<uint32_t, uint32_t> map_coords = map_.posToMap(posX_, posY_);
+        uint32_t mapX = map_coords.first;
+        uint32_t mapY = map_coords.second;
 
-        ROS_INFO("Path length: %li", pathPoints.size());
-
-        if (pathPoints.size() >= 5) {
-            std::pair<float, float> target = pathPoints[4];
-            // calculate current yaw error and push it to the queue
-            float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
-            yawErrorQueue_.push(yawError);
-
-            // maintain queue size of QUEUE_SIZE
-            static bool filledQueue = false;
-            static uint8_t queueCount = 0;
-            if (!filledQueue) { // if queue not full, count until it is
-                queueCount++;
-                if (queueCount >= QUEUE_SIZE) filledQueue = true;
+        if (is_start_) {
+            linear_ = 0.1;
+            ROS_INFO("%f, %f, %f", posX_, posY_, yaw_);
+            ROS_INFO("%d, %d, %f", map_coords.first, map_coords.second, yaw_);
+            for (int i = 0; i < 20; i++) {
+                ROS_INFO("%d", map_.get_map_value(mapX, mapY));
             }
-            else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
-
-            float p = - KP * yawError; // proportional component
-            float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
-            angular_ = p + d; // set angular velocity to sum of two correcting components
-
-            // set speed based on yaw error (higher speed for less error)
-            linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
+            is_start_ = false;
         }
-        else {
-            //linear_ = 0.03;
-            //angular_ = 0.15;
+
+        if (minLaserDist_ < 0.5) {
+            linear_ = 0;
+            move_goal = -0.3;
+            turn_goal = ((float)rand() / (float)RAND_MAX) * 2 * M_PI - M_PI;
         }
+            // getting the shortest path
+//        std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
+//        plotPath(pathPoints);
+//
+//        ROS_INFO("Path length: %li", pathPoints.size());
+//
+//        if (pathPoints.size() >= 5) {
+//            std::pair<float, float> target = pathPoints[4];
+//            // calculate current yaw error and push it to the queue
+//            float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
+//            yawErrorQueue_.push(yawError);
+//
+//            // maintain queue size of QUEUE_SIZE
+//            static bool filledQueue = false;
+//            static uint8_t queueCount = 0;
+//            if (!filledQueue) { // if queue not full, count until it is
+//                queueCount++;
+//                if (queueCount >= QUEUE_SIZE) filledQueue = true;
+//            }
+//            else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
+//
+//            float p = - KP * yawError; // proportional component
+//            float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
+//            angular_ = p + d; // set angular velocity to sum of two correcting components
+//
+//            // set speed based on yaw error (higher speed for less error)
+//            linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
+//        }
+//        else {
+//            //linear_ = 0.03;
+//            //angular_ = 0.15;
+//        }
 
         
     
@@ -191,7 +209,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         
     else {
         // ***invis wall is hit***
-
+        ROS_INFO("WALL");
         float bumpLocX, bumpLocY, bumpAngle;
         float radius = 0.18;  //radius of the robot [m], distance from the center of robot to bumper sensor 
         
@@ -212,19 +230,51 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
         std::pair <uint32_t, uint32_t> bumpCoords = map_.posToMap(bumpLocX, bumpLocY); 
         map_.invis.push_back(bumpCoords);
+        linear_ = 0;
+        move_goal = -0.3;
+        turn_goal = ((float)rand() / (float)RAND_MAX) * 2 * M_PI - M_PI;
         
         // std::cout << "bumpcoordx:" << bumpCoords.first << std::endl;
         // std::cout << "bumpcoordy:" <<bumpCoords.second << std::endl;
         // std::cout << "bumplocX:" << bumpLocX << std::endl;
         // std::cout << "bumplocY:" <<bumpLocY << std::endl;
 
-    } 
-    
+    }
+
+    if (turn_goal != 0) {
+        turn_goal -= angular_ * 0.1;
+        if (turn_goal < 0.1 && turn_goal > -0.1) {
+            ROS_INFO("Stop turn");
+            turn_goal = 0;
+            angular_ = 0;
+            if (move_goal == 0)
+                move_goal = 1;
+        } else {
+            angular_ = copysign(0.1, turn_goal);
+            ROS_INFO("turn_goal %f", turn_goal);
+        }
+    }
+
+    if (move_goal != 0) {
+        move_goal -= linear_ * 0.1;
+        if (move_goal < 0.1 && move_goal > -0.1) {
+            ROS_INFO("Stop move");
+            move_goal = 0;
+            linear_ = 0;
+//            if (turn_goal == 0) {
+//                turn_goal = ((float)rand() / (float)RAND_MAX) * 2 * M_PI - M_PI;
+//            }
+            move_goal = 1;
+        } else {
+            linear_ = copysign(0.1, move_goal);
+            ROS_INFO("move_goal %f", move_goal);
+        }
+    }
 
     vel_.angular.z = angular_;
     vel_.linear.x = linear_;
     vel_pub_.publish(vel_);
-    
+
     //update the elapsed time
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }

@@ -62,8 +62,8 @@ Map::Map(nav_msgs::MapMetaData map_info)
     // iterate over tiles to fill adjacency grid
     createAdjacencyRelationship_(data_, &adjacencyGrid_);
     ROS_INFO("finished creating adjacency relationship for base map");
-    createAdjacencyRelationship_(data_smoothed_, &smoothedAdjacencyGrid_);
-    ROS_INFO("finished creating adjacency relationships for smoothed map");
+//    createAdjacencyRelationship_(data_smoothed_, &smoothedAdjacencyGrid_);
+//    ROS_INFO("finished creating adjacency relationships for smoothed map");
 }
 
 
@@ -174,8 +174,8 @@ void Map::update(std::vector<int8_t> data) {
         data_[xBump + width_*(yBump)] = 100; 
     }
 
-    updateDilated(2);
-    ROS_INFO("finished creating smoothed map");
+//    updateDilated(2);
+//    ROS_INFO("finished creating smoothed map");
 }
 
 
@@ -332,6 +332,9 @@ void Map::plotSmoothedMap(ros::Publisher publisher) {
     publisher.publish(message);
 }
 
+int8_t Map::get_map_value(uint32_t x, uint32_t y) {
+    return data_[y * width_ + x];
+}
 
 // find the closest frontier to the given x and y coordinates
 std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)

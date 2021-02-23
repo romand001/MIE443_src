@@ -71,6 +71,9 @@ private:
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start_;
+    bool is_start_ = true;
+    float turn_goal = 0;
+    float move_goal = 0;
 
 public:
 
