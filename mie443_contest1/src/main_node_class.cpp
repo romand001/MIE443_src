@@ -104,6 +104,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         posX_ = transform.getOrigin().x();
         posY_ = transform.getOrigin().y();
         yaw_ = tf::getYaw(transform.getRotation());
+        std::cout << "robposX:" << posX_ << std::endl;
+        std::cout << "robposY:" << posY_ << std::endl;
     }
     catch (tf::TransformException &ex)
     {
@@ -167,7 +169,9 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
         std::pair <uint32_t, uint32_t> bumpCoords = map_.posToMap(bumpLocX, bumpLocY); 
         map_.invis.push_back(bumpCoords);
-        
+        std::cout << "bumplocX:" << bumpLocX << std::endl;
+        std::cout << "bumplocY:" <<bumpLocY << std::endl;
+
     } 
     
 
