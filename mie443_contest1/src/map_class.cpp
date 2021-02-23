@@ -20,6 +20,7 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt,
     pathLength = weightFactor * occ;
     endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
     totalCost = pathLength + endDist;
+    parent = nullptr;
     checked = false;
 }
 
@@ -504,35 +505,30 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     std::map<uint32_t, Map::Tile_Info> tileMap;
 
-    // if (smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ == nullptr) {
-    //     std::cout << "null pointer in smooth grid" << std::endl;
-    // }
-
-    std::cout << "before deref" << std::endl;
-    int8_t occ_val = *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ;
-    std::cout << "after deref" << std::endl;
-
-
     // creates initial struct entry for the starting position
     Map::Tile_Info start(robotStart.first, robotStart.second, endX, endY,
                          *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ);
-    start.parent = &start;
 
     // set the current tile to start
     Map::Tile_Info curTile = start;
 
     // loop to check every adjascent tile and create a struct entry for it
     // run until it reaches frontier tile
-    while (!tileMap.empty()) {
+    while (true) {
 
         // set current tile as the one with lowest total cost in tileMap
         float lowestCost = 9999999.0;
+        uint32_t uncheckedCount = 0;
         for (auto tilePair: tileMap) {
-            if (!tilePair.second.checked && tilePair.second.totalCost < lowestCost) {
-                lowestCost = tilePair.second.totalCost;
-                Map::Tile_Info curTile = tilePair.second;
+            if (!tilePair.second.checked) {
+                uncheckedCount++;
+                if (tilePair.second.totalCost < lowestCost) {
+                    lowestCost = tilePair.second.totalCost;
+                    Map::Tile_Info curTile = tilePair.second;
+                }
             }
         }
+        if (!uncheckedCount) break;
         curTile.checked = true; // set current tile to checked
 
         // exit loop if current tile is frontier
@@ -541,8 +537,8 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
         uint32_t x = curTile.x, y = curTile.y;
  
         // iterate over neighbours of curTile
-        for (int i = -1; i<= 1; i++) {
-            for (int j = -1; j<= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            for (int j = -1; j <= 1; j++) {
                 if (i && j) {
                     uint32_t nx = x + i, ny = y + j; // neighbour coords
                     if (nx < 0 || nx > width_ - 1 || ny < 0 || ny > height_ - 1) {
@@ -583,13 +579,19 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     }
 
+    //std::cout << "found destination, going back" << std::endl;
+
     std::vector<std::pair<float, float>> backPath;
 
-    while (curTile.parent != &curTile) {
+    uint32_t pathCount = 0;
+
+    while (curTile.parent != nullptr && pathCount < 1000) {
         backPath.push_back(mapToPos(curTile.x, curTile.y));
         curTile = *curTile.parent;
+        pathCount++;
     }
-    // std::cout << "left getPath" << std::endl;
+    if (pathCount == 1000) std::cout << "max path length" << std::endl;
+    //std::cout << "left getPath" << std::endl;
     return backPath;
 
 }

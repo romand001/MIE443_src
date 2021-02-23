@@ -138,28 +138,34 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         // getting the shortest path
         std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
-        std::pair<float, float> target = pathPoints[4];
+        if (pathPoints.size() >= 5) {
+            std::pair<float, float> target = pathPoints[4];
+            // calculate current yaw error and push it to the queue
+            float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
+            yawErrorQueue_.push(yawError);
 
+            // maintain queue size of QUEUE_SIZE
+            static bool filledQueue = false;
+            static uint8_t queueCount = 0;
+            if (!filledQueue) { // if queue not full, count until it is
+                queueCount++;
+                if (queueCount >= QUEUE_SIZE) filledQueue = true;
+            }
+            else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
 
-        // calculate current yaw error and push it to the queue
-        float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
-        yawErrorQueue_.push(yawError);
+            float p = - KP * yawError; // proportional component
+            float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
+            angular_ = p + d; // set angular velocity to sum of two correcting components
 
-        // maintain queue size of QUEUE_SIZE
-        static bool filledQueue = false;
-        static uint8_t queueCount = 0;
-        if (!filledQueue) { // if queue not full, count until it is
-            queueCount++;
-            if (queueCount >= QUEUE_SIZE) filledQueue = true;
+            // set speed based on yaw error (higher speed for less error)
+            linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
         }
-        else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
+        else {
+            linear_ = 0.05;
+            angular_ = 0.0;
+        }
 
-        float p = - KP * yawError; // proportional component
-        float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
-        angular_ = p + d; // set angular velocity to sum of two correcting components
-
-        // set speed based on yaw error (higher speed for less error)
-        linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
+        
     
     
     }
