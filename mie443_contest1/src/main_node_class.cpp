@@ -197,8 +197,11 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
         std::pair <uint32_t, uint32_t> bumpCoords = map_.posToMap(bumpLocX, bumpLocY); 
         map_.invis.push_back(bumpCoords);
-        std::cout << "bumplocX:" << bumpLocX << std::endl;
-        std::cout << "bumplocY:" <<bumpLocY << std::endl;
+        
+        // std::cout << "bumpcoordx:" << bumpCoords.first << std::endl;
+        // std::cout << "bumpcoordy:" <<bumpCoords.second << std::endl;
+        // std::cout << "bumplocX:" << bumpLocX << std::endl;
+        // std::cout << "bumplocY:" <<bumpLocY << std::endl;
 
     } 
     
