@@ -135,17 +135,16 @@ void Map::update(std::vector<int8_t> data) {
     for (int i=0; i < invis.size(); i++) {
         int xBump = invis[i].first;
         int yBump = invis[i].second;
-        data_[xBump + width_*(yBump)] = 100; 
+        data_smoothed_[xBump + width_*(yBump)] = 100; 
     }
-
-
-    }
-
-
-=======
+    
     updateDilated(2);
     ROS_INFO("finished creating smoothed map");
 }
+
+
+
+
 
 
 // create and return dilated map based on unsmoothed_data, where radius is the size of the dilation (robot size), in map units

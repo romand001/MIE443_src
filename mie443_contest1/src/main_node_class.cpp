@@ -108,7 +108,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 
         std::cout << "robposX:" << posX_ << std::endl;
         std::cout << "robposY:" << posY_ << std::endl;
-=======
+
         map_.plotSmoothedMap(smoothed_map_pub_);
 
     }
