@@ -154,7 +154,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
         plotPath(pathPoints);
 
-        ROS_INFO("Path length: %li", pathPoints.size());
+        //ROS_INFO("Path length: %li", pathPoints.size());
 
         if (pathPoints.size() >= 2) {
 
@@ -179,7 +179,7 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
             angular_ = p + d; // set angular velocity to sum of two correcting components
 
             // set speed based on yaw error (higher speed for less error)
-            linear_ = 0.1/M_PI * (M_PI - abs(yawError)) + 0.03;
+            linear_ = 0.05/M_PI * (M_PI - abs(yawError)) + 0.03;
         }
         else {
             linear_ = 0.03;

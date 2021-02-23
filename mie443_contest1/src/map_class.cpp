@@ -464,7 +464,9 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
                     }
 
                     // set goal coordinate for sebastian
-                    frontier_ = *(frontierCoords.begin() + frontierCoords.size()/2);
+                    //frontier_ = *(frontierCoords.begin() + frontierCoords.size()/2);
+                    Map::Tile midTile = border[(int)border.size()/2];
+                    frontier_ = std::pair<uint32_t, uint32_t>(midTile.x, midTile.y);
 
                     return frontierCoords;
                 }
@@ -502,10 +504,10 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 {
 
     std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
-    std::pair<uint32_t, uint32_t> frontierInt = posToMap(frontier_.first, frontier_.second);
+    // std::pair<uint32_t, uint32_t> frontierInt = posToMap(frontier_.first, frontier_.second);
 
     uint32_t startX = robotStart.first, startY = robotStart.second,
-             endX = frontierInt.first, endY = frontierInt.second;
+             endX = frontier_.first, endY = frontier_.second;
 
     // if no frontier available. return empty vector
     if (endX == 0 && endY == 0) {
@@ -513,7 +515,17 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
         return std::vector<std::pair<float, float>>();
     }
 
-    ROS_INFO("running A* search from (%u, %u) to (%u, %u)", startX, startY, endX, endY);
+    //ROS_INFO("running A* search from (%u, %u) to (%u, %u)", startX, startY, endX, endY);
+
+    if (*smoothedAdjacencyGrid_[startX][startY].self.occ == -1 || *smoothedAdjacencyGrid_[startX][startY].self.occ == 100) {
+        ROS_WARN("invalid starting tile");
+        return std::vector<std::pair<float, float>>();
+
+    }
+    if (*smoothedAdjacencyGrid_[endX][endY].self.occ == -1 || *smoothedAdjacencyGrid_[endX][endY].self.occ == 100) {
+        ROS_WARN("invalid ending tile");
+        return std::vector<std::pair<float, float>>();
+    }
 
     std::map<uint32_t, Map::Tile_Info> tileMap;
 
@@ -529,7 +541,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     // loop to check every adjascent tile and create a struct entry for it
     // run until it reaches frontier tile
-    while (true) {
+    for (int loopCount = 0; loopCount < 10000; loopCount++) {
 
         // set current tile as the one with lowest total cost in tileMap
         float lowestCost = 9999999.0;
@@ -546,7 +558,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
         // exit loop if current tile is frontier
         if (curTile.x == endX && curTile.y == endY) {
-            std::cout << "found destination, going back" << std::endl;
+            //std::cout << "found destination, going back" << std::endl;
             break;
         }
 
@@ -563,6 +575,9 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
         // ROS_INFO("checking tile at (%u, %u) whose parent is at (%u, %u), cost=%f, available=%li", 
         //             x, y, curTile.px, curTile.py, curTile.totalCost, tileMap.size());
         // ros::Duration(0.5).sleep();
+
+        // skip current tile if on the edge
+        if (x <= 0 || x >= width_ - 1 || y <= 0 || y >= height_ - 1) continue;
         
  
         // iterate over neighbours of curTile
@@ -571,8 +586,9 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                 if (i && j) {
                     uint32_t nx = x + i, ny = y + j; // neighbour coords
                     if (nx < 0 || nx > width_ - 1 || ny < 0 || ny > height_ - 1) {
-                        ROS_WARN("A* adjacent tile is out of map scope, returning!");
-                        return std::vector<std::pair<float, float>>();
+                        ROS_WARN("A* adjacent tile is out of map scope, skipping it");
+                        //return std::vector<std::pair<float, float>>();
+                        continue;
                     }
                     int8_t occ = *smoothedAdjacencyGrid_[nx][ny].self.occ; // neighbour weight
 
@@ -620,7 +636,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     uint32_t pathCount = 0;
 
-    while (curTile.x != startX && curTile.y != startY && pathCount < 50000) {
+    while (curTile.x != startX && curTile.y != startY && pathCount < 10000) {
         // if (curAddr->parent == endAddr) {
         //     ROS_WARN("we're in a loop");
         //     std::cout << "path count: " << pathCount << std::endl;
@@ -631,7 +647,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
         pathCount++;
     }
     if (pathCount == 50000) std::cout << "max path length" << std::endl;
-    std::cout << "left getPath" << std::endl;
+    //std::cout << "left getPath" << std::endl;
     return backPath;
 
 }

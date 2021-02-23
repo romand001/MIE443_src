@@ -25,8 +25,8 @@
 
 // defines for velocity control system
 #define QUEUE_SIZE 5 // first and last queue errors used for derivative term
-#define KP 0.1 // proportional gain
-#define KD 0.1 // derivative gain
+#define KP 0.4 // proportional gain
+#define KD 0.2 // derivative gain
 
 #ifndef DESIRED_ANGLE
 #define DESIRED_ANGLE 5

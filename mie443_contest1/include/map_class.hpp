@@ -56,7 +56,7 @@ private:
     std::vector<std::vector<AdjacencyRelationship>> smoothedAdjacencyGrid_;
 
     // closest frontier map coordinates
-    std::pair<float, float> frontier_;
+    std::pair<uint32_t, uint32_t> frontier_;
 
     std::vector<int8_t> generateDilated_(uint32_t radius, std::vector<int8_t> unsmoothed_data);
     std::vector<int8_t> generateSmoothed_(uint32_t kernel_size, std::vector<int8_t> unsmoothed_data);
