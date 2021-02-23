@@ -50,6 +50,7 @@ Map::Map(nav_msgs::MapMetaData map_info)
     ROS_INFO("map object created with w: %u, h: %u", width_, height_);
 
     data_.resize(width_*height_, 0);
+    data_smoothed_.resize(width_*height_, 0);
 
     // iterate over tiles to fill adjacency grid
     createAdjacencyRelationship_(data_, &adjacencyGrid_);
@@ -168,10 +169,6 @@ void Map::update(std::vector<int8_t> data) {
     updateDilated(2);
     ROS_INFO("finished creating smoothed map");
 }
-
-
-
-
 
 
 // create and return dilated map based on unsmoothed_data, where radius is the size of the dilation (robot size), in map units
@@ -315,6 +312,14 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
     std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
+
+
+    // std::vector<int8_t> data_smoothed = generateSmoothed_(5, data_dilated);
+    // for (int i=0; i < data_smoothed.size(), i++) {
+    //     data_smoothed_[]
+    // }
+    
+    
     data_smoothed_ = generateSmoothed_(5, data_dilated);
 }
 
@@ -492,11 +497,20 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 
 std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
 {
+    //std::cout << "entered getPath" << std::endl;
     std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
 
     uint32_t endX = frontier_.first, endY = frontier_.second;
 
     std::map<uint32_t, Map::Tile_Info> tileMap;
+
+    // if (smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ == nullptr) {
+    //     std::cout << "null pointer in smooth grid" << std::endl;
+    // }
+
+    std::cout << "before deref" << std::endl;
+    int8_t occ_val = *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ;
+    std::cout << "after deref" << std::endl;
 
 
     // creates initial struct entry for the starting position
@@ -531,6 +545,10 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
             for (int j = -1; j<= 1; j++) {
                 if (i && j) {
                     uint32_t nx = x + i, ny = y + j; // neighbour coords
+                    if (nx < 0 || nx > width_ - 1 || ny < 0 || ny > height_ - 1) {
+                        ROS_WARN("A* adjacent tile is out of map scope, skipping!");
+                        continue;
+                    }
                     int8_t occ = *smoothedAdjacencyGrid_[nx][ny].self.occ; // neighbour weight
 
                     // grab neighbour iterator to check if neighbour exists in map, check traversability
@@ -571,7 +589,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
         backPath.push_back(mapToPos(curTile.x, curTile.y));
         curTile = *curTile.parent;
     }
-
+    // std::cout << "left getPath" << std::endl;
     return backPath;
 
 }
@@ -604,12 +622,24 @@ std::pair<uint32_t, uint32_t> Map::posToMap(float floatX, float floatY)
     uint32_t x = 0;
     uint32_t y = 0;
 
+    // std::cout << "floatX: " << floatX << std::endl;
+    // std::cout << "mapXPos: " << map_info_.origin.position.x << std::endl;
+    // std::cout << "floatY: " << floatY << std::endl;
+    // std::cout << "mapYPos: " << map_info_.origin.position.y << std::endl;
+    // std::cout << "mapRes: " << map_info_.resolution << std::endl;
+
+
     float xt = (floatX - map_info_.origin.position.x) / map_info_.resolution;
+    // std::cout << "xt: " << xt << std::endl;
     if (xt >= 0) x = (uint32_t)ceil(xt);
     else ROS_WARN("xt=%f, will use 0 instead", xt);
     float yt = (floatY - map_info_.origin.position.y) / map_info_.resolution;
+    // std::cout << "yt: " << yt << std::endl;
     if (yt >= 0) y = (uint32_t)ceil(yt);
     else ROS_WARN("yt=%f, will use 0 instead", yt);
+
+    // std::cout << "x: " << x << std::endl;
+    // std::cout << "y: " << y << std::endl;
 
     std::pair<uint32_t, uint32_t> intPair(x, y);
     return intPair;

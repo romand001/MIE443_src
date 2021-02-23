@@ -43,7 +43,6 @@ private:
     ros::Subscriber bumper_sub_;
     ros::Subscriber laser_sub_;
     ros::Subscriber map_sub_;
-    //ros::Subscriber odom_sub_;
     ros::Publisher vel_pub_;
     ros::Publisher vis_pub_;
     ros::Publisher smoothed_map_pub_;
@@ -57,6 +56,8 @@ private:
     Map map_;
     std::string base_link_frame_, map_frame_;
     tf::TransformListener listener_;
+
+    bool receivedMap_ = false;
 
     uint8_t bumper_[3] = {kobuki_msgs::BumperEvent::RELEASED, 
                          kobuki_msgs::BumperEvent::RELEASED, 

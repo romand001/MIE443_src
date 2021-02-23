@@ -1,7 +1,5 @@
 #include "main_node_class.hpp"
 
-int Vis_path_counter =0;
-
 namespace mainSpace {
 
 MainNodeClass::MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& private_node_handle)
@@ -20,7 +18,6 @@ void MainNodeClass::init()
     bumper_sub_ = nh_.subscribe("mobile_base/events/bumper", 10, &MainNodeClass::bumperCallback, this);
     laser_sub_ = nh_.subscribe("scan", 10, &MainNodeClass::laserCallback, this);
     map_sub_ = nh_.subscribe("map", 10, &MainNodeClass::mapCallback, this);
-    //odom_sub_ = nh_.subscribe("odom", 1, &MainNodeClass::odomCallback, this);
     vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
     vis_pub_ = nh_.advertise<visualization_msgs::Marker>("visualization_marker", 10);
     smoothed_map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("smoothed_map", 10);
@@ -89,6 +86,8 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start); 
 
+    receivedMap_ = true;
+
     ROS_INFO("Map callback exec: %li ms", duration.count());
     
 
@@ -119,37 +118,6 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         ROS_ERROR("[ mapCallback() ] %s", ex.what());
     }
 
-    // getting the shortest path
-    std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
-
-    std::pair<float, float> target = pathPoints[4];
-
-
-    // calculate current yaw error and push it to the queue
-    float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
-    yawErrorQueue_.push(yawError);
-
-    // maintain queue size of QUEUE_SIZE
-    static bool filledQueue = false;
-    static uint8_t queueCount = 0;
-    if (!filledQueue) { // if queue not full, count until it is
-        queueCount++;
-        if (queueCount >= QUEUE_SIZE) filledQueue = true;
-    }
-    else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
-
-    float p = - KP * yawError; // proportional component
-    float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
-    angular_ = p + d; // set angular velocity to sum of two correcting components
-
-    // set speed based on yaw error (higher speed for less error)
-    linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
-
-
-
-  
-  // bumper response 
-
     // use index of bumpers, to see which bumper is pressed and then based on that determine 
     // rotation amount.  
 
@@ -162,10 +130,36 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         any_bumper_pressed |= (bumper_[b_idx] == kobuki_msgs::BumperEvent::PRESSED);
     }
 
-    // Control logic after bumpers are being pressed.
-    if (!any_bumper_pressed) {
+    if (!receivedMap_) ROS_INFO("waiting for map to be published");
+
+    // normal operation
+    if (!any_bumper_pressed && receivedMap_) {
         
-        //***normal operation code goes here***
+        // getting the shortest path
+        std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
+
+        std::pair<float, float> target = pathPoints[4];
+
+
+        // calculate current yaw error and push it to the queue
+        float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
+        yawErrorQueue_.push(yawError);
+
+        // maintain queue size of QUEUE_SIZE
+        static bool filledQueue = false;
+        static uint8_t queueCount = 0;
+        if (!filledQueue) { // if queue not full, count until it is
+            queueCount++;
+            if (queueCount >= QUEUE_SIZE) filledQueue = true;
+        }
+        else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
+
+        float p = - KP * yawError; // proportional component
+        float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
+        angular_ = p + d; // set angular velocity to sum of two correcting components
+
+        // set speed based on yaw error (higher speed for less error)
+        linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
     
     
     }
