@@ -261,9 +261,6 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
             ROS_INFO("Stop move");
             move_goal = 0;
             linear_ = 0;
-//            if (turn_goal == 0) {
-//                turn_goal = ((float)rand() / (float)RAND_MAX) * 2 * M_PI - M_PI;
-//            }
             move_goal = 1;
         } else {
             linear_ = copysign(0.1, move_goal);

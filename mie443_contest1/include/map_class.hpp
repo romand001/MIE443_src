@@ -89,8 +89,6 @@ public:
     std::vector<std::vector<bool>> frontierScan();
 
     void plotSmoothedMap(ros::Publisher publisher);
-
-    std::pair<float, float> explore(uint64_t time);
 };
 
 } // namespace end
