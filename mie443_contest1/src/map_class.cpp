@@ -164,7 +164,7 @@ void Map::update(std::vector<int8_t> data) {
     for (int i=0; i < invis.size(); i++) {
         int xBump = invis[i].first;
         int yBump = invis[i].second;
-        data_smoothed_[xBump + width_*(yBump)] = 100; 
+        data_[xBump + width_*(yBump)] = 100; 
     }
     
     updateDilated(2);
