@@ -6,6 +6,9 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+
 //#include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
@@ -46,6 +49,7 @@ private:
     ros::Publisher vel_pub_;
     ros::Publisher vis_pub_;
     ros::Publisher smoothed_map_pub_;
+    tf2_ros::StaticTransformBroadcaster static_broadcaster_;
 
     geometry_msgs::Twist vel_;
 
@@ -90,6 +94,8 @@ public:
     void plotFrontiers(std::vector<std::pair<float, float>> frontierTiles);
 
     void plotPath(std::vector<std::pair<float, float>> pathTiles);
+
+    void publish_smoothed_map_static_transform();
 };
 
 }

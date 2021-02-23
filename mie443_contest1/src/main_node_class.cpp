@@ -31,6 +31,20 @@ void MainNodeClass::init()
 
 }
 
+void MainNodeClass::publish_smoothed_map_static_transform() {
+    geometry_msgs::TransformStamped static_transformStamped;
+    static_transformStamped.header.frame_id = "/map";
+    static_transformStamped.child_frame_id = "/smoothed_map";
+    static_transformStamped.transform.translation.x = 0;
+    static_transformStamped.transform.translation.y = 0;
+    static_transformStamped.transform.translation.z = 0;
+    static_transformStamped.transform.rotation.x = 1;
+    static_transformStamped.transform.rotation.y = 0;
+    static_transformStamped.transform.rotation.z = 0;
+    static_transformStamped.transform.rotation.w = 0;
+    static_broadcaster_.sendTransform(static_transformStamped);
+}
+
 void MainNodeClass::bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
     // this code runs whenever new bumper collision data is published to the 
@@ -96,7 +110,8 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 // this code runs at a regular time interval defined in the timer_ intialization
 void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 {
-    
+    publish_smoothed_map_static_transform();
+
     // updating the x, y, and yaw of the robot
     tf::StampedTransform transform;
     try
