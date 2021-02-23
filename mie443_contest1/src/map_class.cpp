@@ -17,28 +17,33 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt,
     :x(xt),
     y(yt)
 {
+
+    px = -1;
+    py = -1;
+
     int32_t xDist = ((int32_t)end_x - (int32_t)x);
     int32_t yDist = ((int32_t)end_y - (int32_t)y);
 
     pathLength = weightFactor * occ;
     endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
-    parent = nullptr;
+    //parent = nullptr;
     checked = false;
 }
 
 // constructor with parent
 Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, 
-                          Tile_Info* parentT, int8_t occ)
+                          uint32_t pxt, uint32_t pyt, float pLength, int8_t occ)
     :x(xt),
     y(yt),
-    parent(parentT)
+    px(pxt),
+    py(pyt)
 {
     int32_t xDist = ((int32_t)end_x - (int32_t)x);
     int32_t yDist = ((int32_t)end_y - (int32_t)y);
 
-    pathLength = parent->pathLength
-                + sqrt(abs(x - parent->x) + abs(y - parent->y))
+    pathLength = pLength
+                + sqrt(abs(x - px) + abs(y - py))
                 + weightFactor * occ;
     endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
@@ -359,14 +364,14 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 
     ROS_INFO("robot float coordinates are x=%f, y=%f", xf, yf);
 
-    if (x>adjacencyGrid_.size() || y>adjacencyGrid_[0].size()) {
+    if (x>smoothedAdjacencyGrid_.size() || y>smoothedAdjacencyGrid_[0].size()) {
         ROS_ERROR("BFS starting point of x=%u, y=%u is out of bounds in grid of dims x=%lu, y=%lu",
-                    x, y, adjacencyGrid_.size(), adjacencyGrid_[0].size());
+                    x, y, smoothedAdjacencyGrid_.size(), smoothedAdjacencyGrid_[0].size());
         std::vector<std::pair<float, float>> emptyMap;
         return emptyMap;
     }
 
-    Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
+    Map::AdjacencyRelationship rel = smoothedAdjacencyGrid_[x][y];
 
     // set starting tile to visited, push it to the queue
     visited[x][y] = true;
@@ -388,7 +393,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
         for (auto a: adj) {
             // if the tile in rel is an open space and it has an adjacent unexplored tile
             // this means that the rel tile belongs to a frontier cluster
-            if (*rel.self.occ == 0 && *a.occ == -1) {
+            if (*rel.self.occ != -1 && *rel.self.occ != 100 && *a.occ == -1) {
 
                 ROS_INFO("finished BFS, found frontier at x=%u, y=%u", rel.self.x, rel.self.y);
 
@@ -429,11 +434,11 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
                     // iterate over adjacent tiles
                     for (auto a: adj) {
                         // if this neighour is an open space and hasn't been visited
-                        if (*a.occ == 0 && !visitedTiles[a.x + width_*a.y]) {
+                        if (*a.occ != -1 && *a.occ != 100 && !visitedTiles[a.x + width_*a.y]) {
                             // set to visited
                             visitedTiles[a.x + width_*a.y] = true;
                             // get tiles adjacent to the neighbour and iterate over them
-                            Map::AdjacencyRelationship rel2 = adjacencyGrid_[a.x][a.y];
+                            Map::AdjacencyRelationship rel2 = smoothedAdjacencyGrid_[a.x][a.y];
                             std::vector<Map::Tile> adj2 = rel2.adjacentTiles;
                             for (auto a2: adj2) {
                                 // if any of the adjacent tile's neighbours is an unknown space, add the tile to stack
@@ -469,14 +474,14 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
             // if tile at these coords has not been visited, add to the queue and set to visited
             // tile must also be open space in order to be added, so that search does not go through walls
             // this is part of the BFS
-            else if (!visited[a.x][a.y] && *a.occ == 0) {
+            else if (!visited[a.x][a.y] && *a.occ != -1 && *a.occ != 100) {
                 // set this tile's position as visited
                 visited[a.x][a.y] = true;
                 // push the adjacency relationship to the queue and loop back
 
-                // ROS_INFO("tried pushing adjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
-                //             adjacencyGrid_.size(), adjacencyGrid_[0].size(), a.x, a.y);
-                queue.push(adjacencyGrid_[a.x][a.y]);
+                // ROS_INFO("tried pushing smoothedAdjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
+                //             smoothedAdjacencyGrid_.size(), smoothedAdjacencyGrid_[0].size(), a.x, a.y);
+                queue.push(smoothedAdjacencyGrid_[a.x][a.y]);
             }
 
         }
@@ -520,6 +525,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     // set the current tile to start
     Map::Tile_Info curTile = start;
+    //Map::Tile_Info* startAddr = &start;
 
     // loop to check every adjascent tile and create a struct entry for it
     // run until it reaches frontier tile
@@ -537,10 +543,6 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                 }
             }
         }
-        if (!uncheckedCount) {
-            ROS_WARN("checked all tiles, no available path");
-            return std::vector<std::pair<float, float>>();
-        }
 
         // exit loop if current tile is frontier
         if (curTile.x == endX && curTile.y == endY) {
@@ -548,13 +550,20 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
             break;
         }
 
+        if (!uncheckedCount) {
+            ROS_WARN("checked all tiles, no available path");
+            return std::vector<std::pair<float, float>>();
+        }
+
         uint32_t x = curTile.x, y = curTile.y;
 
         tileMap.find(x + width_*y)->second.checked = true; // set current tile to checked
 
-        // ROS_INFO("checking tile at (%u, %u), cost=%f, available=%li", 
-        //          x, y, curTile.totalCost, tileMap.size());
+
+        // ROS_INFO("checking tile at (%u, %u) whose parent is at (%u, %u), cost=%f, available=%li", 
+        //             x, y, curTile.px, curTile.py, curTile.totalCost, tileMap.size());
         // ros::Duration(0.5).sleep();
+        
  
         // iterate over neighbours of curTile
         for (int i = -1; i <= 1; i++) {
@@ -577,7 +586,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                     if (!valid || (inMap && curNeighbourIt->second.checked)) continue;
 
                     // create new neighbour, decide later if it is new or should replace current one
-                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, &curTile, occ);
+                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, x, y, curTile.pathLength, occ);
                     //ROS_INFO("created new neighbour at (%u, %u), with cost=%f", nx, ny, newNeighbour.totalCost);
 
                     // if no neigbour at these coords, add neighbour to map
@@ -605,14 +614,23 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     std::vector<std::pair<float, float>> backPath;
 
+    // ROS_INFO("curTile: (%u, %u), its parent: (%u, %u), and its parent: (%u, %u)",
+    //          curTile.x, curTile.y, curTile.parent->x, curTile.parent->y,
+    //          curTile.parent->parent->x, curTile.parent->parent->y);
+
     uint32_t pathCount = 0;
 
-    while (curTile.parent != nullptr && pathCount < 50000) {
+    while (curTile.x != startX && curTile.y != startY && pathCount < 50000) {
+        // if (curAddr->parent == endAddr) {
+        //     ROS_WARN("we're in a loop");
+        //     std::cout << "path count: " << pathCount << std::endl;
+        //     break;
+        // }
         backPath.push_back(mapToPos(curTile.x, curTile.y));
-        curTile = *curTile.parent;
+        curTile = tileMap.find(curTile.px + width_*curTile.py)->second;
         pathCount++;
     }
-    if (pathCount == 1000) std::cout << "max path length" << std::endl;
+    if (pathCount == 50000) std::cout << "max path length" << std::endl;
     std::cout << "left getPath" << std::endl;
     return backPath;
 
