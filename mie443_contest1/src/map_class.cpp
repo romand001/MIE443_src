@@ -520,6 +520,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     // set the current tile to start
     Map::Tile_Info curTile = start;
+    Map::Tile_Info* startAddr = &start;
 
     // loop to check every adjascent tile and create a struct entry for it
     // run until it reaches frontier tile
@@ -537,10 +538,6 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                 }
             }
         }
-        if (!uncheckedCount) {
-            ROS_WARN("checked all tiles, no available path");
-            return std::vector<std::pair<float, float>>();
-        }
 
         // exit loop if current tile is frontier
         if (curTile.x == endX && curTile.y == endY) {
@@ -548,13 +545,21 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
             break;
         }
 
+        if (!uncheckedCount) {
+            ROS_WARN("checked all tiles, no available path");
+            return std::vector<std::pair<float, float>>();
+        }
+
         uint32_t x = curTile.x, y = curTile.y;
 
         tileMap.find(x + width_*y)->second.checked = true; // set current tile to checked
 
-        // ROS_INFO("checking tile at (%u, %u), cost=%f, available=%li", 
-        //          x, y, curTile.totalCost, tileMap.size());
-        // ros::Duration(0.5).sleep();
+        // if (curTile.parent) {
+        //     ROS_INFO("checking tile at (%u, %u) whose parent is at (%u, %u), cost=%f, available=%li", 
+        //              x, y, curTile.parent->x, curTile.parent->y, curTile.totalCost, tileMap.size());
+        //     ros::Duration(0.5).sleep();
+        // }
+        
  
         // iterate over neighbours of curTile
         for (int i = -1; i <= 1; i++) {
@@ -608,10 +613,18 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
     Map::Tile_Info* curAddr = &curTile;
     Map::Tile_Info* endAddr = curAddr;
 
+    // ROS_INFO("curTile: (%u, %u), its parent: (%u, %u), and its parent: (%u, %u)",
+    //          curTile.x, curTile.y, curTile.parent->x, curTile.parent->y,
+    //          curTile.parent->parent->x, curTile.parent->parent->y);
+
     uint32_t pathCount = 0;
 
-    while (curAddr->parent != nullptr && pathCount < 50000) {
-        if (curAddr->parent == endAddr) ROS_WARN("we're in a loop");
+    while (curAddr->parent != startAddr && pathCount < 50000) {
+        if (curAddr->parent == endAddr) {
+            ROS_WARN("we're in a loop");
+            std::cout << "path count: " << pathCount << std::endl;
+            break;
+        }
         backPath.push_back(mapToPos(curAddr->x, curAddr->y));
         curAddr = curAddr->parent;
         pathCount++;
