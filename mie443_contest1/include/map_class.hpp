@@ -60,6 +60,8 @@ public:
     std::pair<float, float> mapToPos(uint32_t intX, uint32_t intY);
     std::pair<uint32_t, uint32_t> posToMap(float floatX, float floatY);
 
+    std::vector<std::pair<uint32_t, uint32_t>> invis;
+
     // deprecated
     void print();
     // deprecated
