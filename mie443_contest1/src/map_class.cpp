@@ -5,11 +5,38 @@ namespace mainSpace {
 // constructor for the Tile struct, sets the coord and occupancy
 Map::Tile::Tile(uint32_t xt, uint32_t yt) 
     :x(xt), 
-    y(yt) {};
+    y(yt) {}
 
 Map::AdjacencyRelationship::AdjacencyRelationship(Map::Tile selft, std::vector<Map::Tile> adjt)
     :self(selft),
     adjacentTiles(adjt) {}
+
+// constructor without parent (for start)
+Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, 
+                          uint32_t end_x, uint32_t end_y, int8_t occ)
+    :x(xt),
+    y(yt)
+{
+    pathLength = weightFactor * occ;
+    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    totalCost = pathLength + endDist;
+    checked = false;
+}
+
+// constructor with parent
+Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, 
+                          Tile_Info* parentT, int8_t occ)
+    :x(xt),
+    y(yt),
+    parent(parentT)
+{
+    pathLength = parent->pathLength
+                + sqrt(abs(x - parent->x) + abs(y - parent->y))
+                + weightFactor * occ;
+    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    totalCost = pathLength + endDist;
+    checked = false;
+}
 
 // empty constructor for initializing map without map_info
 Map::Map() {}
@@ -462,11 +489,90 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 // returns a path for robot to follow to the frontier
 // takes X and Y robot positions, returns vector of coordinates
 // makes use of private members occupancy grid (pre-processed version) and frontier coordinates
+
 std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
 {
-    // for now: use occupancyGrid_ and frontier_
-    // get x and y from frontier with frontier.first and frontier.second
+    std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
 
+    uint32_t endX = frontier_.first, endY = frontier_.second;
+
+    std::map<uint32_t, Map::Tile_Info> tileMap;
+
+
+    // creates initial struct entry for the starting position
+    Map::Tile_Info start(robotStart.first, robotStart.second, endX, endY,
+                         *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ);
+    start.parent = &start;
+
+    // set the current tile to start
+    Map::Tile_Info curTile = start;
+
+    // loop to check every adjascent tile and create a struct entry for it
+    // run until it reaches frontier tile
+    while (!tileMap.empty()) {
+
+        // set current tile as the one with lowest total cost in tileMap
+        float lowestCost = 9999999.0;
+        for (auto tilePair: tileMap) {
+            if (!tilePair.second.checked && tilePair.second.totalCost < lowestCost) {
+                lowestCost = tilePair.second.totalCost;
+                Map::Tile_Info curTile = tilePair.second;
+            }
+        }
+        curTile.checked = true; // set current tile to checked
+
+        // exit loop if current tile is frontier
+        if (curTile.x == endX && curTile.y == endY) break;
+
+        uint32_t x = curTile.x, y = curTile.y;
+ 
+        // iterate over neighbours of curTile
+        for (int i = -1; i<= 1; i++) {
+            for (int j = -1; j<= 1; j++) {
+                if (i && j) {
+                    uint32_t nx = x + i, ny = y + j; // neighbour coords
+                    int8_t occ = *smoothedAdjacencyGrid_[nx][ny].self.occ; // neighbour weight
+
+                    // grab neighbour iterator to check if neighbour exists in map, check traversability
+                    std::map<uint32_t, mainSpace::Map::Tile_Info>::iterator curNeighbourIt = tileMap.find(nx + width_*ny);
+                    bool inMap = curNeighbourIt != tileMap.end();
+                    bool valid = occ != -1 && occ != 100;
+
+                    // if not traversable OR (neighbour exists AND has been checked), skip it
+                    // have to check if neighbour exists before getting its checked status
+                    if (!valid || (inMap && curNeighbourIt->second.checked)) continue;
+
+                    // create new neighbour, decide later if it is new or should replace current one
+                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, &curTile, occ);
+
+                    // if no neigbour at these coords, add neighbour to map
+                    if (!inMap) {
+                        tileMap.emplace(nx + width_*ny, newNeighbour);
+                    }
+                    else {
+                        // grab current neighbour for path length comparison
+                        Map::Tile_Info curNeighbour = curNeighbourIt->second;
+                        if (newNeighbour.pathLength < curNeighbour.pathLength) {
+                            tileMap.erase(nx + width_*ny);
+                            tileMap.emplace(nx + width_*ny, newNeighbour);
+                        }
+                    }
+                    
+                }
+            }
+        }
+
+
+    }
+
+    std::vector<std::pair<float, float>> backPath;
+
+    while (curTile.parent != &curTile) {
+        backPath.push_back(mapToPos(curTile.x, curTile.y));
+        curTile = *curTile.parent;
+    }
+
+    return backPath;
 
 }
 
