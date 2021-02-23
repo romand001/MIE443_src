@@ -17,28 +17,33 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt,
     :x(xt),
     y(yt)
 {
+
+    px = -1;
+    py = -1;
+
     int32_t xDist = ((int32_t)end_x - (int32_t)x);
     int32_t yDist = ((int32_t)end_y - (int32_t)y);
 
     pathLength = weightFactor * occ;
     endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
-    parent = nullptr;
+    //parent = nullptr;
     checked = false;
 }
 
 // constructor with parent
 Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, 
-                          Map::Tile_Info* parentT, int8_t occ)
+                          uint32_t pxt, uint32_t pyt, float pLength, int8_t occ)
     :x(xt),
     y(yt),
-    parent(parentT)
+    px(pxt),
+    py(pyt)
 {
     int32_t xDist = ((int32_t)end_x - (int32_t)x);
     int32_t yDist = ((int32_t)end_y - (int32_t)y);
 
-    pathLength = parent->pathLength
-                + sqrt(abs(x - parent->x) + abs(y - parent->y))
+    pathLength = pLength
+                + sqrt(abs(x - px) + abs(y - py))
                 + weightFactor * occ;
     endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
@@ -520,7 +525,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     // set the current tile to start
     Map::Tile_Info curTile = start;
-    Map::Tile_Info* startAddr = &start;
+    //Map::Tile_Info* startAddr = &start;
 
     // loop to check every adjascent tile and create a struct entry for it
     // run until it reaches frontier tile
@@ -554,11 +559,10 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
         tileMap.find(x + width_*y)->second.checked = true; // set current tile to checked
 
-        // if (curTile.parent) {
-        //     ROS_INFO("checking tile at (%u, %u) whose parent is at (%u, %u), cost=%f, available=%li", 
-        //              x, y, curTile.parent->x, curTile.parent->y, curTile.totalCost, tileMap.size());
-        //     ros::Duration(0.5).sleep();
-        // }
+
+        // ROS_INFO("checking tile at (%u, %u) whose parent is at (%u, %u), cost=%f, available=%li", 
+        //             x, y, curTile.px, curTile.py, curTile.totalCost, tileMap.size());
+        // ros::Duration(0.5).sleep();
         
  
         // iterate over neighbours of curTile
@@ -582,7 +586,7 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                     if (!valid || (inMap && curNeighbourIt->second.checked)) continue;
 
                     // create new neighbour, decide later if it is new or should replace current one
-                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, &curTile, occ);
+                    Map::Tile_Info newNeighbour(nx, ny, endX, endY, x, y, curTile.pathLength, occ);
                     //ROS_INFO("created new neighbour at (%u, %u), with cost=%f", nx, ny, newNeighbour.totalCost);
 
                     // if no neigbour at these coords, add neighbour to map
@@ -610,23 +614,20 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     std::vector<std::pair<float, float>> backPath;
 
-    Map::Tile_Info* curAddr = &curTile;
-    Map::Tile_Info* endAddr = curAddr;
-
     // ROS_INFO("curTile: (%u, %u), its parent: (%u, %u), and its parent: (%u, %u)",
     //          curTile.x, curTile.y, curTile.parent->x, curTile.parent->y,
     //          curTile.parent->parent->x, curTile.parent->parent->y);
 
     uint32_t pathCount = 0;
 
-    while (curAddr->parent != startAddr && pathCount < 50000) {
-        if (curAddr->parent == endAddr) {
-            ROS_WARN("we're in a loop");
-            std::cout << "path count: " << pathCount << std::endl;
-            break;
-        }
-        backPath.push_back(mapToPos(curAddr->x, curAddr->y));
-        curAddr = curAddr->parent;
+    while (curTile.x != startX && curTile.y != startY && pathCount < 50000) {
+        // if (curAddr->parent == endAddr) {
+        //     ROS_WARN("we're in a loop");
+        //     std::cout << "path count: " << pathCount << std::endl;
+        //     break;
+        // }
+        backPath.push_back(mapToPos(curTile.x, curTile.y));
+        curTile = tileMap.find(curTile.px + width_*curTile.py)->second;
         pathCount++;
     }
     if (pathCount == 50000) std::cout << "max path length" << std::endl;
