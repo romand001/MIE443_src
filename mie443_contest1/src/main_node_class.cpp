@@ -81,7 +81,7 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     // get closest frontier
     std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
 
-    plotMarkers(frontierList);
+    plotFrontiers(frontierList);
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start); 
@@ -107,8 +107,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         posY_ = transform.getOrigin().y();
         yaw_ = tf::getYaw(transform.getRotation());
 
-        std::cout << "robposX:" << posX_ << std::endl;
-        std::cout << "robposY:" << posY_ << std::endl;
+        // std::cout << "robposX:" << posX_ << std::endl;
+        // std::cout << "robposY:" << posY_ << std::endl;
 
         map_.plotSmoothedMap(smoothed_map_pub_);
 
@@ -137,6 +137,9 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         
         // getting the shortest path
         std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
+        plotPath(pathPoints);
+
+        ROS_INFO("Path length: %li", pathPoints.size());
 
         if (pathPoints.size() >= 5) {
             std::pair<float, float> target = pathPoints[4];
@@ -161,8 +164,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
             linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
         }
         else {
-            linear_ = 0.05;
-            angular_ = 0.0;
+            //linear_ = 0.03;
+            //angular_ = 0.15;
         }
 
         
@@ -208,20 +211,20 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
-void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTiles)
+void MainNodeClass::plotFrontiers(std::vector<std::pair<float, float>> frontierTiles)
 {
-    visualization_msgs::Marker points;
-    points.header.frame_id = "/map";
-    points.header.stamp = ros::Time::now();
-    points.ns = "points";
-    points.action = visualization_msgs::Marker::ADD;
-    points.pose.orientation.w = 1.0;
-    points.id = 0;
-    points.type = visualization_msgs::Marker::POINTS;
-    points.scale.x = 0.05;
-    points.scale.y = 0.05;
-    points.color.a = 1.0;
-    points.color.r = 1.0;
+    visualization_msgs::Marker redPoints;
+    redPoints.header.frame_id = "/map";
+    redPoints.header.stamp = ros::Time::now();
+    redPoints.ns = "redPoints";
+    redPoints.action = visualization_msgs::Marker::ADD;
+    redPoints.pose.orientation.w = 1.0;
+    redPoints.id = 0;
+    redPoints.type = visualization_msgs::Marker::POINTS;
+    redPoints.scale.x = 0.05;
+    redPoints.scale.y = 0.05;
+    redPoints.color.a = 1.0;
+    redPoints.color.r = 1.0;
 
     for (auto frontier: frontierTiles) {
         geometry_msgs::Point p;
@@ -229,10 +232,37 @@ void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTil
         p.y = frontier.second;
         //ROS_INFO("plotting point at %f, %f", p.x, p.y);
         p.z = 0.02;
-        points.points.push_back(p);
+        redPoints.points.push_back(p);
     }
     
-    vis_pub_.publish(points);
+    vis_pub_.publish(redPoints);
+}
+
+void MainNodeClass::plotPath(std::vector<std::pair<float, float>> pathTiles)
+{
+    visualization_msgs::Marker greenPoints;
+    greenPoints.header.frame_id = "/map";
+    greenPoints.header.stamp = ros::Time::now();
+    greenPoints.ns = "greenPoints";
+    greenPoints.action = visualization_msgs::Marker::ADD;
+    greenPoints.pose.orientation.w = 1.0;
+    greenPoints.id = 1;
+    greenPoints.type = visualization_msgs::Marker::POINTS;
+    greenPoints.scale.x = 0.05;
+    greenPoints.scale.y = 0.05;
+    greenPoints.color.a = 1.0;
+    greenPoints.color.g = 1.0;
+
+    for (auto pathPoint: pathTiles) {
+        geometry_msgs::Point p;
+        p.x = pathPoint.first;
+        p.y = pathPoint.second;
+        //ROS_INFO("plotting point at %f, %f", p.x, p.y);
+        p.z = 0.02;
+        greenPoints.points.push_back(p);
+    }
+    
+    vis_pub_.publish(greenPoints);
 }
 
 } //namespace end

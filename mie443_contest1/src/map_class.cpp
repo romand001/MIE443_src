@@ -17,8 +17,11 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt,
     :x(xt),
     y(yt)
 {
+    int32_t xDist = ((int32_t)end_x - (int32_t)x);
+    int32_t yDist = ((int32_t)end_y - (int32_t)y);
+
     pathLength = weightFactor * occ;
-    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
     parent = nullptr;
     checked = false;
@@ -31,10 +34,13 @@ Map::Tile_Info::Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end
     y(yt),
     parent(parentT)
 {
+    int32_t xDist = ((int32_t)end_x - (int32_t)x);
+    int32_t yDist = ((int32_t)end_y - (int32_t)y);
+
     pathLength = parent->pathLength
                 + sqrt(abs(x - parent->x) + abs(y - parent->y))
                 + weightFactor * occ;
-    endDist = sqrt(pow(end_x - x, 2) + pow(end_y - y, 2));
+    endDist = sqrt((float)(xDist*xDist + yDist*yDist));
     totalCost = pathLength + endDist;
     checked = false;
 }
@@ -156,6 +162,7 @@ void Map::info()
 // update map data
 // adjacency grid is also updated because it points to data_
 void Map::update(std::vector<int8_t> data) {
+
     data_ = data;
 
     // *****add bumper data to data_
@@ -164,9 +171,9 @@ void Map::update(std::vector<int8_t> data) {
     for (int i=0; i < invis.size(); i++) {
         int xBump = invis[i].first;
         int yBump = invis[i].second;
-        data_smoothed_[xBump + width_*(yBump)] = 100; 
+        data_[xBump + width_*(yBump)] = 100; 
     }
-    
+
     updateDilated(2);
     ROS_INFO("finished creating smoothed map");
 }
@@ -313,14 +320,6 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
     std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
-
-
-    // std::vector<int8_t> data_smoothed = generateSmoothed_(5, data_dilated);
-    // for (int i=0; i < data_smoothed.size(), i++) {
-    //     data_smoothed_[]
-    // }
-    
-    
     data_smoothed_ = generateSmoothed_(5, data_dilated);
 }
 
@@ -458,11 +457,9 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
                     for (auto frontier: border) {
                         frontierCoords.push_back(mapToPos(frontier.x, frontier.y));
                     }
-                    // uncomment this to plot robot coords as well:
-                    // frontierCoords.insert(std::pair<float, float>(xf, yf));
 
                     // set goal coordinate for sebastian
-                    frontier_ = frontierCoords[(int)frontierCoords.size()];
+                    frontier_ = *(frontierCoords.begin() + frontierCoords.size()/2);
 
                     return frontierCoords;
                 }
@@ -498,16 +495,28 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 
 std::vector<std::pair<float, float>> Map::getPath(float posX, float posY) 
 {
-    //std::cout << "entered getPath" << std::endl;
-    std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
 
-    uint32_t endX = frontier_.first, endY = frontier_.second;
+    std::pair<uint32_t, uint32_t> robotStart = posToMap(posX, posY);
+    std::pair<uint32_t, uint32_t> frontierInt = posToMap(frontier_.first, frontier_.second);
+
+    uint32_t startX = robotStart.first, startY = robotStart.second,
+             endX = frontierInt.first, endY = frontierInt.second;
+
+    // if no frontier available. return empty vector
+    if (endX == 0 && endY == 0) {
+        ROS_INFO("no frontier available for path planning");
+        return std::vector<std::pair<float, float>>();
+    }
+
+    ROS_INFO("running A* search from (%u, %u) to (%u, %u)", startX, startY, endX, endY);
 
     std::map<uint32_t, Map::Tile_Info> tileMap;
 
     // creates initial struct entry for the starting position
-    Map::Tile_Info start(robotStart.first, robotStart.second, endX, endY,
-                         *smoothedAdjacencyGrid_[robotStart.first][robotStart.second].self.occ);
+    Map::Tile_Info start(startX, startY, endX, endY,
+                         *smoothedAdjacencyGrid_[startX][startY].self.occ);
+    
+    tileMap.emplace(startX + width_*startY, start);
 
     // set the current tile to start
     Map::Tile_Info curTile = start;
@@ -524,17 +533,28 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                 uncheckedCount++;
                 if (tilePair.second.totalCost < lowestCost) {
                     lowestCost = tilePair.second.totalCost;
-                    Map::Tile_Info curTile = tilePair.second;
+                    curTile = tilePair.second;
                 }
             }
         }
-        if (!uncheckedCount) break;
-        curTile.checked = true; // set current tile to checked
+        if (!uncheckedCount) {
+            ROS_WARN("checked all tiles, no available path");
+            return std::vector<std::pair<float, float>>();
+        }
 
         // exit loop if current tile is frontier
-        if (curTile.x == endX && curTile.y == endY) break;
+        if (curTile.x == endX && curTile.y == endY) {
+            std::cout << "found destination, going back" << std::endl;
+            break;
+        }
 
         uint32_t x = curTile.x, y = curTile.y;
+
+        tileMap.find(x + width_*y)->second.checked = true; // set current tile to checked
+
+        // ROS_INFO("checking tile at (%u, %u), cost=%f, available=%li", 
+        //          x, y, curTile.totalCost, tileMap.size());
+        // ros::Duration(0.5).sleep();
  
         // iterate over neighbours of curTile
         for (int i = -1; i <= 1; i++) {
@@ -542,13 +562,13 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
                 if (i && j) {
                     uint32_t nx = x + i, ny = y + j; // neighbour coords
                     if (nx < 0 || nx > width_ - 1 || ny < 0 || ny > height_ - 1) {
-                        ROS_WARN("A* adjacent tile is out of map scope, skipping!");
-                        continue;
+                        ROS_WARN("A* adjacent tile is out of map scope, returning!");
+                        return std::vector<std::pair<float, float>>();
                     }
                     int8_t occ = *smoothedAdjacencyGrid_[nx][ny].self.occ; // neighbour weight
 
                     // grab neighbour iterator to check if neighbour exists in map, check traversability
-                    std::map<uint32_t, mainSpace::Map::Tile_Info>::iterator curNeighbourIt = tileMap.find(nx + width_*ny);
+                    std::map<uint32_t, Map::Tile_Info>::iterator curNeighbourIt = tileMap.find(nx + width_*ny);
                     bool inMap = curNeighbourIt != tileMap.end();
                     bool valid = occ != -1 && occ != 100;
 
@@ -558,15 +578,19 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
                     // create new neighbour, decide later if it is new or should replace current one
                     Map::Tile_Info newNeighbour(nx, ny, endX, endY, &curTile, occ);
+                    //ROS_INFO("created new neighbour at (%u, %u), with cost=%f", nx, ny, newNeighbour.totalCost);
 
                     // if no neigbour at these coords, add neighbour to map
                     if (!inMap) {
+                        //ROS_INFO("no neighbour here. adding it");
                         tileMap.emplace(nx + width_*ny, newNeighbour);
                     }
                     else {
                         // grab current neighbour for path length comparison
                         Map::Tile_Info curNeighbour = curNeighbourIt->second;
+                        //ROS_INFO("current neighbour has cost %f", curNeighbour.totalCost);
                         if (newNeighbour.pathLength < curNeighbour.pathLength) {
+                            //ROS_INFO("new neighbour has shorter path, replacing it now");
                             tileMap.erase(nx + width_*ny);
                             tileMap.emplace(nx + width_*ny, newNeighbour);
                         }
@@ -579,19 +603,17 @@ std::vector<std::pair<float, float>> Map::getPath(float posX, float posY)
 
     }
 
-    //std::cout << "found destination, going back" << std::endl;
-
     std::vector<std::pair<float, float>> backPath;
 
     uint32_t pathCount = 0;
 
-    while (curTile.parent != nullptr && pathCount < 1000) {
+    while (curTile.parent != nullptr && pathCount < 50000) {
         backPath.push_back(mapToPos(curTile.x, curTile.y));
         curTile = *curTile.parent;
         pathCount++;
     }
     if (pathCount == 1000) std::cout << "max path length" << std::endl;
-    //std::cout << "left getPath" << std::endl;
+    std::cout << "left getPath" << std::endl;
     return backPath;
 
 }
