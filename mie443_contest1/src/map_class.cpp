@@ -179,7 +179,7 @@ void Map::update(std::vector<int8_t> data) {
         data_[xBump + width_*(yBump)] = 100; 
     }
 
-    updateDilated(2);
+    updateDilated(4);
     ROS_INFO("finished creating smoothed map");
 }
 
@@ -325,7 +325,7 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
     std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
-    data_smoothed_ = generateSmoothed_(5, data_dilated);
+    data_smoothed_ = generateSmoothed_(7, data_dilated);
 }
 
 void Map::plotSmoothedMap(ros::Publisher publisher) {
