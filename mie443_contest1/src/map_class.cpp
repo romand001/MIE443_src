@@ -155,7 +155,7 @@ void Map::info()
     std::map<int8_t, uint32_t> gridVals;
     // iterate through data and increment the value that it matches in gridVals
     for (int i = 0; i < width_ * height_; i++) {
-        gridVals[data_[i]]++;
+        gridVals[data_smoothed_[i]]++;
     }
     // iterate through the map data structure and print out with nice formatting
     std::map<int8_t, uint32_t>::iterator it;
@@ -179,7 +179,7 @@ void Map::update(std::vector<int8_t> data) {
         data_[xBump + width_*(yBump)] = 100; 
     }
 
-    updateDilated(4);
+    updateDilated(2);
     ROS_INFO("finished creating smoothed map");
 }
 
@@ -316,6 +316,7 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
             smoothed_data[i] = unsmoothed_data[i];
         }else {
             smoothed_data[i] = vertical_sums[i] / vertical_sum_counts[i];
+            if (smoothed_data[i] < 0 || smoothed_data[i] > 100) ROS_WARN("smoothed data out of bounds");
         }
     }
     return smoothed_data;
@@ -325,7 +326,7 @@ std::vector<int8_t> Map::generateSmoothed_(uint32_t kernel_size, std::vector<int
 // update dilated map based on current data_ value
 void Map::updateDilated(uint32_t radius) {
     std::vector<int8_t> data_dilated = generateDilated_(radius, data_);
-    data_smoothed_ = generateSmoothed_(7, data_dilated);
+    data_smoothed_ = generateSmoothed_(5, data_dilated);
 }
 
 void Map::plotSmoothedMap(ros::Publisher publisher) {
@@ -351,10 +352,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
     //////////////////////////////////////////////////////
 
     // 2D vector of booleans to keep track of visited tiles
-    std::vector<std::vector<bool>> visited(
-        width_,
-        std::vector<bool>(height_, false)
-    );
+    std::vector<bool> visited(width_*height_, false);
 
     std::pair<uint32_t, uint32_t> mapCoords = posToMap(xf, yf);
     uint32_t x = mapCoords.first;
@@ -372,31 +370,68 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
         return emptyMap;
     }
 
-    Map::AdjacencyRelationship rel = smoothedAdjacencyGrid_[x][y];
-    rel.self.px = 0; rel.self.py = 0;
+    Map::AdjacencyRelationship rel = adjacencyGrid_[x][y];
+    adjacencyGrid_[x][y].self.px = 0; adjacencyGrid_[x][y].self.py = 0;
 
     // set starting tile to visited, push it to the queue
-    visited[x][y] = true;
+    visited[x + width_*y] = true;
     queue.push(rel);
 
     // is the current frontier bigger than the minimum defined size?
-    bool bigEnough = false; 
+    //bool bigEnough = false; 
 
     // process every tile in the queue or until a big enough frontier is found
-    while (queue.size() != 0 && !bigEnough) {
+    while (!queue.empty()) {
         // set rel to the first queue item and then pop it from the queue
+
         rel = queue.front();
         queue.pop();
 
         // get the adjacent tiles to this tile
         std::vector<Map::Tile> adj = rel.adjacentTiles;
+
+        ROS_INFO("queue size: %li, num neighbours: %li", queue.size(), adj.size());
+
+        //bool relOpen = *rel.self.occ != -1 && *rel.self.occ != 100;
         
         // iterate over its adjacent tiles
         for (auto a: adj) {
             // if the tile in rel is an open space and it has an adjacent unexplored tile
             // this means that the rel tile belongs to a frontier cluster
-            if (*rel.self.occ != -1 && *rel.self.occ != 100 && *a.occ == -1) {
+            
+            if (*rel.self.occ == 0 && *a.occ == -1) {
 
+                std::cout << "found frontier, tracing back" << std::endl;
+
+                uint32_t endX = rel.self.x; uint32_t endY = rel.self.y;
+
+                //Map::Tile frontierTile = rel.self;
+
+                //std::cout << "segfault check 2" << std::endl;
+
+                //frontier_ = std::pair<uint32_t, uint32_t>(frontierTile.x, frontierTile.y);
+
+                //std::cout << "segfault check 3" << std::endl;
+
+                while (rel.self.px != 0 || rel.self.py != 0) {
+                    ROS_INFO("tracing back from (%u, %u) to (%u, %u), current occ=%i",
+                             rel.self.x, rel.self.y, rel.self.px, rel.self.py, *rel.self.occ);
+                    //std::cout << "segfault check 1" << std::endl;
+                    path_->push_back(mapToPos(rel.self.x, rel.self.y));
+                    //std::cout << "segfault check 2" << std::endl;
+                    if (rel.self.px < 0 || rel.self.px > width_-1 || rel.self.py < 0 || rel.self.py > height_-1) {
+                        std::cout << "parent coords out of range" << std::endl;
+                        path_->clear();
+                        break;
+                    }
+                    rel = adjacencyGrid_[rel.self.px][rel.self.py];
+                }
+
+                std::vector<std::pair<float, float>> retVec;
+                retVec.push_back(mapToPos(endX, endY));
+
+                return retVec;
+                /*
                 ROS_INFO("finished BFS, found frontier at x=%u, y=%u", rel.self.x, rel.self.y);
 
                 // perform DFS and propagate along border to check size
@@ -440,7 +475,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
                             // set to visited
                             visitedTiles[a.x + width_*a.y] = true;
                             // get tiles adjacent to the neighbour and iterate over them
-                            Map::AdjacencyRelationship rel2 = smoothedAdjacencyGrid_[a.x][a.y];
+                            Map::AdjacencyRelationship rel2 = adjacencyGrid_[a.x][a.y];
                             std::vector<Map::Tile> adj2 = rel2.adjacentTiles;
                             for (auto a2: adj2) {
                                 // if any of the adjacent tile's neighbours is an unknown space, add the tile to stack
@@ -482,7 +517,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
                         path_->push_back(mapToPos(rel.self.x, rel.self.y));
                         //std::cout << "segfault check 2" << std::endl;
                         if (rel.self.px < 0 || rel.self.px > width_-1 || rel.self.py < 0 || rel.self.py > height_-1) break;
-                        rel = smoothedAdjacencyGrid_[rel.self.px][rel.self.py];
+                        rel = adjacencyGrid_[rel.self.px][rel.self.py];
                     }
 
                     //std::cout << "segfault check 4" << std::endl;
@@ -490,21 +525,27 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
                     return frontierCoords;
                 }
                 // otherwise we find the next frontier
-
+                */
             }
             // if tile at these coords has not been visited, add to the queue and set to visited
             // tile must also be open space in order to be added, so that search does not go through walls
             // this is part of the BFS
-            else if (!visited[a.x][a.y] && *a.occ != -1 && *a.occ != 100) {
+
+            // *a.occ != -1 && *a.occ != 100
+            else if (!visited[a.x + width_ * a.y] && *a.occ == 0) {
                 // set this tile's position as visited
-                visited[a.x][a.y] = true;
+                visited[a.x + width_ * a.y] = true;
                 // push the adjacency relationship to the queue and loop back
 
-                // ROS_INFO("tried pushing smoothedAdjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
-                //             smoothedAdjacencyGrid_.size(), smoothedAdjacencyGrid_[0].size(), a.x, a.y);
-                smoothedAdjacencyGrid_[a.x][a.y].self.px = rel.self.x;
-                smoothedAdjacencyGrid_[a.x][a.y].self.py = rel.self.y;
-                queue.push(smoothedAdjacencyGrid_[a.x][a.y]);
+                // ROS_INFO("tried pushing adjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
+                //             adjacencyGrid_.size(), adjacencyGrid_[0].size(), a.x, a.y);
+                adjacencyGrid_[a.x][a.y].self.px = rel.self.x;
+                adjacencyGrid_[a.x][a.y].self.py = rel.self.y;
+                queue.push(adjacencyGrid_[a.x][a.y]);
+            }
+            else {
+                std::cout << "invalid neighbour, visited: " << visited[a.x + width_ * a.y]
+                          << ", occ: " << (int)*a.occ << std::endl;
             }
 
         }

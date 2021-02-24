@@ -42,10 +42,10 @@ void MainNodeClass::publish_smoothed_map_static_transform() {
     static_transformStamped.transform.translation.x = 0;
     static_transformStamped.transform.translation.y = 0;
     static_transformStamped.transform.translation.z = 0;
-    static_transformStamped.transform.rotation.x = 1;
+    static_transformStamped.transform.rotation.x = 0;
     static_transformStamped.transform.rotation.y = 0;
     static_transformStamped.transform.rotation.z = 0;
-    static_transformStamped.transform.rotation.w = 0;
+    static_transformStamped.transform.rotation.w = 1;
     static_broadcaster_.sendTransform(static_transformStamped);
 }
 
@@ -95,6 +95,7 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
     // update data array of map
     map_.update(msg->data);
+    //map_.info();
 
     // get closest frontier
     std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_, &path_);
