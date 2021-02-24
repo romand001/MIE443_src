@@ -6,7 +6,7 @@
 #include <stack>
 #include <chrono>
 
-#define MINBORDERSIZE 7
+#define MINBORDERSIZE 3
 
 namespace mainSpace {
 
@@ -15,6 +15,8 @@ class Map {
     struct Tile {
         uint32_t x;
         uint32_t y;
+        uint32_t px;
+        uint32_t py;
         int8_t* occ;
         Tile(uint32_t xt, uint32_t yt);
     };
@@ -28,7 +30,8 @@ class Map {
     struct Tile_Info {
         uint32_t x;
         uint32_t y;
-        Tile_Info* parent;
+        uint32_t px;
+        uint32_t py;
         float pathLength;
         float endDist;
         float totalCost;
@@ -40,7 +43,7 @@ class Map {
         Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, int8_t occ);
         // constructor with parent
         Tile_Info(uint32_t xt, uint32_t yt, uint32_t end_x, uint32_t end_y, 
-                  Tile_Info* parentT, int8_t occ);
+                  uint32_t pxt, uint32_t pyt, float pLength, int8_t occ);
     };
 
 private:
@@ -70,7 +73,7 @@ public:
     void info();
     void update(std::vector<int8_t> data);
     void updateDilated(uint32_t radius);
-    std::vector<std::pair<float, float>> closestFrontier(float xf, float yf);
+    std::vector<std::pair<float, float>> closestFrontier(float xf, float yf, std::vector<std::pair<float, float>>* path_);
     std::vector<std::pair<float, float>> getPath(float posX, float posY);
     nav_msgs::MapMetaData getInfo();
     uint32_t getWidth();

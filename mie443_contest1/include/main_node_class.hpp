@@ -6,6 +6,9 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+
 //#include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
@@ -22,8 +25,8 @@
 
 // defines for velocity control system
 #define QUEUE_SIZE 5 // first and last queue errors used for derivative term
-#define KP 1.0 // proportional gain
-#define KD 1.0 // derivative gain
+#define KP 0.25 // proportional gain
+#define KD 0.1 // derivative gain
 
 #ifndef DESIRED_ANGLE
 #define DESIRED_ANGLE 5
@@ -46,6 +49,7 @@ private:
     ros::Publisher vel_pub_;
     ros::Publisher vis_pub_;
     ros::Publisher smoothed_map_pub_;
+    tf2_ros::StaticTransformBroadcaster static_broadcaster_;
 
     geometry_msgs::Twist vel_;
 
@@ -64,6 +68,8 @@ private:
                          kobuki_msgs::BumperEvent::RELEASED};
 
     float minLaserDist_;
+
+    std::vector<std::pair<float, float>> path_;
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start_;
@@ -87,7 +93,11 @@ public:
 
     void timerCallback(const ros::TimerEvent& event);
 
-    void plotMarkers(std::vector<std::pair<float, float>> frontierTiles);
+    void plotFrontiers(std::vector<std::pair<float, float>> frontierTiles);
+
+    void plotPath(std::vector<std::pair<float, float>> pathTiles);
+
+    void publish_smoothed_map_static_transform();
 };
 
 }

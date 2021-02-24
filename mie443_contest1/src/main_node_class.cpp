@@ -31,6 +31,20 @@ void MainNodeClass::init()
 
 }
 
+void MainNodeClass::publish_smoothed_map_static_transform() {
+    geometry_msgs::TransformStamped static_transformStamped;
+    static_transformStamped.header.frame_id = "/map";
+    static_transformStamped.child_frame_id = "/smoothed_map";
+    static_transformStamped.transform.translation.x = 0;
+    static_transformStamped.transform.translation.y = 0;
+    static_transformStamped.transform.translation.z = 0;
+    static_transformStamped.transform.rotation.x = 1;
+    static_transformStamped.transform.rotation.y = 0;
+    static_transformStamped.transform.rotation.z = 0;
+    static_transformStamped.transform.rotation.w = 0;
+    static_broadcaster_.sendTransform(static_transformStamped);
+}
+
 void MainNodeClass::bumperCallback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
     // this code runs whenever new bumper collision data is published to the 
@@ -79,9 +93,9 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     map_.update(msg->data);
 
     // get closest frontier
-    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
+    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_, &path_);
 
-    plotMarkers(frontierList);
+    plotFrontiers(frontierList);
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start); 
@@ -96,7 +110,8 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 // this code runs at a regular time interval defined in the timer_ intialization
 void MainNodeClass::timerCallback(const ros::TimerEvent &event)
 {
-    
+    publish_smoothed_map_static_transform();
+
     // updating the x, y, and yaw of the robot
     tf::StampedTransform transform;
     try
@@ -107,8 +122,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
         posY_ = transform.getOrigin().y();
         yaw_ = tf::getYaw(transform.getRotation());
 
-        std::cout << "robposX:" << posX_ << std::endl;
-        std::cout << "robposY:" << posY_ << std::endl;
+        // std::cout << "robposX:" << posX_ << std::endl;
+        // std::cout << "robposY:" << posY_ << std::endl;
 
         map_.plotSmoothedMap(smoothed_map_pub_);
 
@@ -136,10 +151,18 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     if (!any_bumper_pressed && receivedMap_) {
         
         // getting the shortest path
-        std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
 
-        if (pathPoints.size() >= 5) {
-            std::pair<float, float> target = pathPoints[4];
+        // std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
+        //plotPath(pathPoints);
+        plotPath(path_);
+
+        //ROS_INFO("Path length: %li", pathPoints.size());
+
+        if (path_.size() >= 2) {
+
+            uint8_t targetIndex = std::min(5, (int)path_.size()-1);
+
+            std::pair<float, float> target = path_[targetIndex];
             // calculate current yaw error and push it to the queue
             float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
             yawErrorQueue_.push(yawError);
@@ -153,16 +176,16 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
             }
             else yawErrorQueue_.pop(); // if the queue is full, pop off the last number
 
-            float p = - KP * yawError; // proportional component
-            float d = - KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
+            float p = KP * yawError; // proportional component
+            float d = KD * (yawErrorQueue_.front() - yawErrorQueue_.back()); // derivative component
             angular_ = p + d; // set angular velocity to sum of two correcting components
 
             // set speed based on yaw error (higher speed for less error)
-            linear_ = 0.14 * (M_PI/2 - abs(yawError)) + 0.05;
+            linear_ = 0.05/M_PI * (M_PI - abs(yawError)) + 0.03;
         }
         else {
-            linear_ = 0.05;
-            angular_ = 0.0;
+            linear_ = 0.02;
+            angular_ = 0.3;
         }
 
         
@@ -211,20 +234,20 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     secondsElapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start_).count();
 }
 
-void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTiles)
+void MainNodeClass::plotFrontiers(std::vector<std::pair<float, float>> frontierTiles)
 {
-    visualization_msgs::Marker points;
-    points.header.frame_id = "/map";
-    points.header.stamp = ros::Time::now();
-    points.ns = "points";
-    points.action = visualization_msgs::Marker::ADD;
-    points.pose.orientation.w = 1.0;
-    points.id = 0;
-    points.type = visualization_msgs::Marker::POINTS;
-    points.scale.x = 0.05;
-    points.scale.y = 0.05;
-    points.color.a = 1.0;
-    points.color.r = 1.0;
+    visualization_msgs::Marker redPoints;
+    redPoints.header.frame_id = "/map";
+    redPoints.header.stamp = ros::Time::now();
+    redPoints.ns = "redPoints";
+    redPoints.action = visualization_msgs::Marker::ADD;
+    redPoints.pose.orientation.w = 1.0;
+    redPoints.id = 0;
+    redPoints.type = visualization_msgs::Marker::POINTS;
+    redPoints.scale.x = 0.05;
+    redPoints.scale.y = 0.05;
+    redPoints.color.a = 1.0;
+    redPoints.color.r = 1.0;
 
     for (auto frontier: frontierTiles) {
         geometry_msgs::Point p;
@@ -232,10 +255,37 @@ void MainNodeClass::plotMarkers(std::vector<std::pair<float, float>> frontierTil
         p.y = frontier.second;
         //ROS_INFO("plotting point at %f, %f", p.x, p.y);
         p.z = 0.02;
-        points.points.push_back(p);
+        redPoints.points.push_back(p);
     }
     
-    vis_pub_.publish(points);
+    vis_pub_.publish(redPoints);
+}
+
+void MainNodeClass::plotPath(std::vector<std::pair<float, float>> pathTiles)
+{
+    visualization_msgs::Marker greenPoints;
+    greenPoints.header.frame_id = "/map";
+    greenPoints.header.stamp = ros::Time::now();
+    greenPoints.ns = "greenPoints";
+    greenPoints.action = visualization_msgs::Marker::ADD;
+    greenPoints.pose.orientation.w = 1.0;
+    greenPoints.id = 1;
+    greenPoints.type = visualization_msgs::Marker::POINTS;
+    greenPoints.scale.x = 0.05;
+    greenPoints.scale.y = 0.05;
+    greenPoints.color.a = 1.0;
+    greenPoints.color.g = 1.0;
+
+    for (auto pathPoint: pathTiles) {
+        geometry_msgs::Point p;
+        p.x = pathPoint.first;
+        p.y = pathPoint.second;
+        //ROS_INFO("plotting point at %f, %f", p.x, p.y);
+        p.z = 0.02;
+        greenPoints.points.push_back(p);
+    }
+    
+    vis_pub_.publish(greenPoints);
 }
 
 } //namespace end
