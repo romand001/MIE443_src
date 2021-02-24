@@ -93,7 +93,7 @@ void MainNodeClass::mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     map_.update(msg->data);
 
     // get closest frontier
-    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_);
+    std::vector<std::pair<float, float>> frontierList = map_.closestFrontier(posX_, posY_, &path_);
 
     plotFrontiers(frontierList);
 
@@ -151,16 +151,18 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
     if (!any_bumper_pressed && receivedMap_) {
         
         // getting the shortest path
-        std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
-        plotPath(pathPoints);
+
+        // std::vector<std::pair<float, float>> pathPoints = map_.getPath(posX_, posY_);
+        //plotPath(pathPoints);
+        plotPath(path_);
 
         //ROS_INFO("Path length: %li", pathPoints.size());
 
-        if (pathPoints.size() >= 2) {
+        if (path_.size() >= 2) {
 
-            uint8_t targetIndex = std::min(5, (int)pathPoints.size()-1);
+            uint8_t targetIndex = std::min(5, (int)path_.size()-1);
 
-            std::pair<float, float> target = pathPoints[targetIndex];
+            std::pair<float, float> target = path_[targetIndex];
             // calculate current yaw error and push it to the queue
             float yawError = atan2( (target.second - posY_), (target.first - posX_) ) - yaw_;
             yawErrorQueue_.push(yawError);
@@ -182,8 +184,8 @@ void MainNodeClass::timerCallback(const ros::TimerEvent &event)
             linear_ = 0.05/M_PI * (M_PI - abs(yawError)) + 0.03;
         }
         else {
-            linear_ = 0.03;
-            angular_ = 0.15;
+            linear_ = 0.02;
+            angular_ = 0.3;
         }
 
         

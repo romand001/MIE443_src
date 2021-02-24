@@ -339,9 +339,10 @@ void Map::plotSmoothedMap(ros::Publisher publisher) {
 
 
 // find the closest frontier to the given x and y coordinates
-std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
+std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, std::vector<std::pair<float, float>>* path_)
 {
     
+    path_->clear();
 
     //ROS_INFO("entered closest frontier algorithm");
 
@@ -372,6 +373,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
     }
 
     Map::AdjacencyRelationship rel = smoothedAdjacencyGrid_[x][y];
+    rel.self.x = 0; rel.self.y = 0;
 
     // set starting tile to visited, push it to the queue
     visited[x][y] = true;
@@ -468,6 +470,11 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
                     Map::Tile midTile = border[(int)border.size()/2];
                     frontier_ = std::pair<uint32_t, uint32_t>(midTile.x, midTile.y);
 
+                    while (rel.self.px != 0 || rel.self.y != 0) {
+                        path_->push_back(mapToPos(rel.self.x, rel.self.y));
+                        rel = smoothedAdjacencyGrid_[rel.self.px][rel.self.py];
+                    }
+
                     return frontierCoords;
                 }
                 // otherwise we find the next frontier
@@ -483,6 +490,8 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf)
 
                 // ROS_INFO("tried pushing smoothedAdjacencyGrid_ of size %u by %u at indices [%u][%u] to queue",
                 //             smoothedAdjacencyGrid_.size(), smoothedAdjacencyGrid_[0].size(), a.x, a.y);
+                smoothedAdjacencyGrid_[a.x][a.y].self.px = rel.self.x;
+                smoothedAdjacencyGrid_[a.x][a.y].self.py = rel.self.y;
                 queue.push(smoothedAdjacencyGrid_[a.x][a.y]);
             }
 

@@ -25,8 +25,8 @@
 
 // defines for velocity control system
 #define QUEUE_SIZE 5 // first and last queue errors used for derivative term
-#define KP 0.4 // proportional gain
-#define KD 0.2 // derivative gain
+#define KP 0.25 // proportional gain
+#define KD 0.1 // derivative gain
 
 #ifndef DESIRED_ANGLE
 #define DESIRED_ANGLE 5
@@ -68,6 +68,8 @@ private:
                          kobuki_msgs::BumperEvent::RELEASED};
 
     float minLaserDist_;
+
+    std::vector<std::pair<float, float>> path_;
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start_;

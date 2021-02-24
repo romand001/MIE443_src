@@ -15,6 +15,8 @@ class Map {
     struct Tile {
         uint32_t x;
         uint32_t y;
+        uint32_t px;
+        uint32_t py;
         int8_t* occ;
         Tile(uint32_t xt, uint32_t yt);
     };
@@ -71,7 +73,7 @@ public:
     void info();
     void update(std::vector<int8_t> data);
     void updateDilated(uint32_t radius);
-    std::vector<std::pair<float, float>> closestFrontier(float xf, float yf);
+    std::vector<std::pair<float, float>> closestFrontier(float xf, float yf, std::vector<std::pair<float, float>>* path_);
     std::vector<std::pair<float, float>> getPath(float posX, float posY);
     nav_msgs::MapMetaData getInfo();
     uint32_t getWidth();
