@@ -12,6 +12,8 @@ MainNodeClass::MainNodeClass(ros::NodeHandle& node_handle, ros::NodeHandle& priv
 
 void MainNodeClass::init() 
 {
+
+    std::cout << "entered init" << std::endl;
     angular_ = linear_ = 0.0;
     posX_ = posY_ = yaw_ = 0.0;
 
@@ -28,6 +30,8 @@ void MainNodeClass::init()
     nh_.param<std::string>("base_link_frame", base_link_frame_, "/base_link");
 
     start_ = std::chrono::system_clock::now();
+
+    std::cout << "left init" << std::endl;
 
 }
 

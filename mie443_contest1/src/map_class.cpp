@@ -373,7 +373,7 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
     }
 
     Map::AdjacencyRelationship rel = smoothedAdjacencyGrid_[x][y];
-    rel.self.x = 0; rel.self.y = 0;
+    rel.self.px = 0; rel.self.py = 0;
 
     // set starting tile to visited, push it to the queue
     visited[x][y] = true;
@@ -465,15 +465,27 @@ std::vector<std::pair<float, float>> Map::closestFrontier(float xf, float yf, st
                         frontierCoords.push_back(mapToPos(frontier.x, frontier.y));
                     }
 
+                    //std::cout << "segfault check 1" << std::endl;
+
                     // set goal coordinate for sebastian
                     //frontier_ = *(frontierCoords.begin() + frontierCoords.size()/2);
                     Map::Tile midTile = border[(int)border.size()/2];
+
+                    //std::cout << "segfault check 2" << std::endl;
+
                     frontier_ = std::pair<uint32_t, uint32_t>(midTile.x, midTile.y);
 
-                    while (rel.self.px != 0 || rel.self.y != 0) {
+                    //std::cout << "segfault check 3" << std::endl;
+
+                    while (rel.self.px != 0 || rel.self.py != 0) {
+                        //std::cout << "segfault check 1" << std::endl;
                         path_->push_back(mapToPos(rel.self.x, rel.self.y));
+                        //std::cout << "segfault check 2" << std::endl;
+                        if (rel.self.px < 0 || rel.self.px > width_-1 || rel.self.py < 0 || rel.self.py > height_-1) break;
                         rel = smoothedAdjacencyGrid_[rel.self.px][rel.self.py];
                     }
+
+                    //std::cout << "segfault check 4" << std::endl;
 
                     return frontierCoords;
                 }
