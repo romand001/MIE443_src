@@ -14,13 +14,13 @@ void plotMarkers(std::vector<std::vector<float>> markers)
     visualization_msgs::Marker points;
     points.header.frame_id = "/map";
     points.header.stamp = ros::Time::now();
-    points.ns = "points";
+    points.ns = "points_and_lines";
     points.action = visualization_msgs::Marker::ADD;
     points.pose.orientation.w = 1.0;
     points.id = 0;
     points.type = visualization_msgs::Marker::POINTS;
-    points.scale.x = 0.05;
-    points.scale.y = 0.05;
+    points.scale.x = 0.1;
+    points.scale.y = 0.1;
     points.color.a = 1.0;
     points.color.r = 1.0;
 
@@ -36,6 +36,39 @@ void plotMarkers(std::vector<std::vector<float>> markers)
     vis_pub.publish(points);
 }
 
+void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path) 
+{
+
+    visualization_msgs::Marker line_strip;
+    line_strip.header.frame_id = "/map";
+    line_strip.header.stamp = ros::Time::now();
+    line_strip.ns = "points_and_lines";
+    line_strip.action = visualization_msgs::Marker::ADD;
+    line_strip.pose.orientation.w = 1.0;
+    line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+    line_strip.id = 1;
+    line_strip.scale.x = 0.1;
+    line_strip.color.b = 1.0;
+    line_strip.color.a = 1.0;
+
+    geometry_msgs::Point p;
+    p.x = robotPose.x;
+    p.y = robotPose.y;
+    p.z = 0.02;
+    line_strip.points.push_back(p);
+
+    for (auto point: path) {
+        geometry_msgs::Point p;
+        p.x = point[0];
+        p.y = point[1];
+        p.z = 0.02;
+        line_strip.points.push_back(p);
+    }
+
+    vis_pub.publish(line_strip);
+
+}
+
 std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
 {
     std::vector<std::vector<float>> goals;
@@ -47,6 +80,40 @@ std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoor
         goals.push_back(goalCoord);
     }
     return goals;
+}
+
+float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
+{
+    int n = path.size();
+    float rob_x_dist = path[0][0] - robotPose.x;
+    float rob_y_dist = path[0][1] - robotPose.y;
+    float length = rob_x_dist * rob_x_dist + rob_y_dist * rob_y_dist;
+    
+    for (int i = 1; i < n; i++) {
+        float x_dist = path[i][0] - path[i-1][0];
+        float y_dist = path[i][1] - path[i-1][1];
+
+        length += x_dist * x_dist + y_dist + y_dist; // sqrt is too slow
+    }
+
+    return length;
+}
+
+std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::vector<float>> goalCoords)
+{
+    std::cout << "Starting path search" << std::endl;
+    float bestLength = 99999.9;
+    std::vector<std::vector<float>> bestPath;
+
+    do {
+        float length = pathLength(robotPose, goalCoords);
+        if (length < bestLength) {
+            bestLength = length;
+            bestPath = goalCoords;
+        }
+    } while (std::next_permutation(goalCoords.begin(), goalCoords.end()));
+    std::cout << "Finished path search" << std::endl;
+    return bestPath;
 }
 
 int main(int argc, char** argv) {
@@ -73,6 +140,10 @@ int main(int argc, char** argv) {
     // Execute strategy.
 
     std::vector<std::vector<float>> goals = getGoals(boxes.coords);
+    std::vector<std::vector<float>> path = bestPath(robotPose, goals);
+
+    plotMarkers(goals);
+    plotPath(robotPose, path);
 
     while(ros::ok()) {
         ros::spinOnce();
@@ -80,7 +151,7 @@ int main(int argc, char** argv) {
         // Use: boxes.coords
         // Use: robotPose.x, robotPose.y, robotPose.phi
 
-        plotMarkers(goals);
+        
 
         imagePipeline.getTemplateID(boxes);
         ros::Duration(1).sleep();
