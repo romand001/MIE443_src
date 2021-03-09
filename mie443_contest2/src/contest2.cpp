@@ -9,7 +9,8 @@
 
 ros::Publisher vis_pub;
 
-const float goalDistance = 0.4; // distance in front of boxes where robot should go
+const std::vector<float> phi_offsets = {0, -M_PI/4, M_PI/4};
+const std::vector<float> goal_distances = {0.25, 0.35, 0.35};
 
 
 void plotMarkers(std::vector<std::vector<float>> markers)
@@ -74,17 +75,26 @@ void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path)
 
 
 
-std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
+//std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
+//{
+//    std::vector<std::vector<float>> goals;
+//    for (auto coord: boxCoords) {
+//        float x = coord[0] + goalDistance * cos(coord[2]);
+//        float y = coord[1] + goalDistance * sin(coord[2]);
+//        float phi = coord[2];
+//        std::vector<float> goalCoord = {x, y, phi};
+//        goals.push_back(goalCoord);
+//    }
+//    return goals;
+//}
+
+std::vector<float> getGoal(float phi_offset, float goalDistance, std::vector<float> coord)
 {
-    std::vector<std::vector<float>> goals;
-    for (auto coord: boxCoords) {
-        float x = coord[0] + goalDistance * cos(coord[2]);
-        float y = coord[1] + goalDistance * sin(coord[2]);
-        float phi = coord[2];
-        std::vector<float> goalCoord = {x, y, phi};
-        goals.push_back(goalCoord);
-    }
-    return goals;
+    float phi = coord[2] + phi_offset;
+    float x = coord[0] + goalDistance * cos(phi);
+    float y = coord[1] + goalDistance * sin(phi);
+    std::vector<float> goalCoord = {x, y, phi + (float)M_PI};
+    return goalCoord;
 }
 
 float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
@@ -131,12 +141,16 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
 }
 
 
-void visitGoals(std::vector<std::vector<float>> path) {
-    ROS_INFO("Moving to (%f, %f, %f)", path[1][0], path[1][1], path[1][2] + M_1_PI);
-    Navigation::moveToGoal(path[1][0], path[1][1], path[1][2] + M_1_PI);
-//    for (int i = 0; i < path.size(); i++) {
-//
-//    }
+void visitBox(std::vector<float> boxCoords) {
+    for (int i = 0; i < phi_offsets.size(); i++) {
+        std::vector<float> coords = getGoal(phi_offsets[i], goal_distances[i], boxCoords);
+        ROS_INFO("Moving to (%f, %f, %f), phi_offset %f, goal_distance %f", coords[0], coords[1], coords[2], phi_offsets[i], goal_distances[i]);
+        plotMarkers({coords});
+        bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
+        if (success) {
+            break;
+        }
+    }
 }
 
 
@@ -163,24 +177,26 @@ int main(int argc, char** argv) {
     ImagePipeline imagePipeline(n);
     // Execute strategy.
 
-    std::vector<std::vector<float>> goals = getGoals(boxes.coords);
-    std::vector<std::vector<float>> path = bestPath(robotPose, goals);
+//    std::vector<std::vector<float>> goals = getGoals(boxes.coords);
+    std::vector<std::vector<float>> path = bestPath(robotPose, boxes.coords);
 
-    plotMarkers(goals);
+    plotMarkers(boxes.coords);
     plotPath(robotPose, path);
 
-    visitGoals(path);
+//    visitGoals(path);
 
-    while(ros::ok()) {
+    int box_index = 0;
+    while(ros::ok() && box_index < path.size()) {
         ros::spinOnce();
         /***YOUR CODE HERE***/
         // Use: boxes.coords
         // Use: robotPose.x, robotPose.y, robotPose.phi
 
-        
-
+        ROS_INFO("")
+        visitBox(path[box_index]);
         imagePipeline.getTemplateID(boxes);
-        ros::Duration(1).sleep();
+        ros::Duration(10).sleep();
+        box_index++;
     }
     return 0;
 }
