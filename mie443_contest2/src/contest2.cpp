@@ -4,6 +4,9 @@
 #include <imagePipeline.h>
 #include <visualization_msgs/Marker.h>
 
+#include <iterator>
+#include <algorithm>
+
 ros::Publisher vis_pub;
 
 const float goalDistance = 0.4; // distance in front of boxes where robot should go
@@ -69,6 +72,8 @@ void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path)
 
 }
 
+
+
 std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
 {
     std::vector<std::vector<float>> goals;
@@ -99,22 +104,33 @@ float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
     return length;
 }
 
+bool compareVec(const std::vector<float>& v1, const std::vector<float>& v2)
+{
+  return (v1[0] + v1[1] < v2[0] + v2[1]);
+}
+
 std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::vector<float>> goalCoords)
 {
-    std::cout << "Starting path search" << std::endl;
+    ROS_INFO("starting path search");
     float bestLength = 99999.9;
     std::vector<std::vector<float>> bestPath;
 
+    std::sort(goalCoords.begin(), goalCoords.end(), compareVec); // sort by comp function, permutations ordered lexicographically
+
     do {
         float length = pathLength(robotPose, goalCoords);
+
         if (length < bestLength) {
             bestLength = length;
             bestPath = goalCoords;
         }
-    } while (std::next_permutation(goalCoords.begin(), goalCoords.end()));
-    std::cout << "Finished path search" << std::endl;
+        
+    } while (std::next_permutation(goalCoords.begin(), goalCoords.end(), compareVec));
+    
     return bestPath;
 }
+
+
 
 int main(int argc, char** argv) {
     // Setup ROS.
