@@ -136,6 +136,14 @@ float distance(RobotPose robotPose, std::vector<float> goal)
 
     return xDist * xDist + yDist * yDist + phiDist * phiDist; // no sqrt
 }
+void visitGoals(std::vector<std::vector<float>> path) {
+    ROS_INFO("Moving to (%f, %f, %f)", path[1][0], path[1][1], path[1][2] + M_1_PI);
+    Navigation::moveToGoal(path[1][0], path[1][1], path[1][2] + M_1_PI);
+//    for (int i = 0; i < path.size(); i++) {
+//
+//    }
+}
+
 
 int main(int argc, char** argv) {
     // Setup ROS.
@@ -168,6 +176,7 @@ int main(int argc, char** argv) {
 
     int goalIndex = 0;
     bool onTheWay = false;
+    visitGoals(path);
 
     while(ros::ok()) {
         ros::spinOnce();
