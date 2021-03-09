@@ -9,8 +9,8 @@
 
 ros::Publisher vis_pub;
 
-const float goalDistance = 0.4; // distance in front of boxes where robot should go
-
+const float goalDistance = 0.25; // distance in front of boxes where robot should go
+const float phiScale = 1.0; // scaling factor for phi diff when calculating goal distance
 
 void plotMarkers(std::vector<std::vector<float>> markers)
 {
@@ -72,8 +72,6 @@ void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path)
 
 }
 
-
-
 std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
 {
     std::vector<std::vector<float>> goals;
@@ -126,11 +124,18 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
         }
         
     } while (std::next_permutation(goalCoords.begin(), goalCoords.end(), compareVec));
-    
+
     return bestPath;
 }
 
+float distance(RobotPose robotPose, std::vector<float> goal)
+{
+    float xDist = goal[0] - robotPose.x;
+    float yDist = goal[1] - robotPose.y;
+    float phiDist = phiScale * (goal[2] - robotPose.phi);
 
+    return xDist * xDist + yDist * yDist + phiDist * phiDist; // no sqrt
+}
 
 int main(int argc, char** argv) {
     // Setup ROS.
@@ -161,11 +166,25 @@ int main(int argc, char** argv) {
     plotMarkers(goals);
     plotPath(robotPose, path);
 
+    int goalIndex = 0;
+    bool onTheWay = false;
+
     while(ros::ok()) {
         ros::spinOnce();
         /***YOUR CODE HERE***/
         // Use: boxes.coords
         // Use: robotPose.x, robotPose.y, robotPose.phi
+
+        if (!onTheWay) {
+            float goalX = goals[goalIndex][0];
+            float goalY = goals[goalIndex][1];
+            float goalPhi = goals[goalIndex][2];
+            Navigation::moveToGoal(goalX, goalY, goalPhi);
+            onTheWay = true;
+        }
+
+        
+
 
         
 
