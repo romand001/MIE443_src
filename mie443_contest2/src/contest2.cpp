@@ -12,7 +12,6 @@ ros::Publisher vis_pub;
 const std::vector<float> phi_offsets = {0, -M_PI/4, M_PI/4};
 const std::vector<float> goal_distances = {0.25, 0.35, 0.35};
 
-
 void plotMarkers(std::vector<std::vector<float>> markers)
 {
     visualization_msgs::Marker points;
@@ -72,7 +71,6 @@ void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path)
     vis_pub.publish(line_strip);
 
 }
-
 
 
 //std::vector<std::vector<float>> getGoals(std::vector<std::vector<float>> boxCoords)
@@ -136,10 +134,9 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
         }
         
     } while (std::next_permutation(goalCoords.begin(), goalCoords.end(), compareVec));
-    
+
     return bestPath;
 }
-
 
 void visitBox(std::vector<float> boxCoords) {
     for (int i = 0; i < phi_offsets.size(); i++) {
@@ -183,8 +180,6 @@ int main(int argc, char** argv) {
     plotMarkers(boxes.coords);
     plotPath(robotPose, path);
 
-//    visitGoals(path);
-
     int box_index = 0;
     while(ros::ok() && box_index < path.size()) {
         ros::spinOnce();
@@ -192,7 +187,7 @@ int main(int argc, char** argv) {
         // Use: boxes.coords
         // Use: robotPose.x, robotPose.y, robotPose.phi
 
-        ROS_INFO("")
+        ROS_INFO("Moving to box index %d", box_index);
         visitBox(path[box_index]);
         imagePipeline.getTemplateID(boxes);
         ros::Duration(10).sleep();
