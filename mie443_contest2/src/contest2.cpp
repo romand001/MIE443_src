@@ -131,6 +131,14 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
 }
 
 
+void visitGoals(std::vector<std::vector<float>> path) {
+    ROS_INFO("Moving to (%f, %f, %f)", path[1][0], path[1][1], path[1][2] + M_1_PI);
+    Navigation::moveToGoal(path[1][0], path[1][1], path[1][2] + M_1_PI);
+//    for (int i = 0; i < path.size(); i++) {
+//
+//    }
+}
+
 
 int main(int argc, char** argv) {
     // Setup ROS.
@@ -161,8 +169,7 @@ int main(int argc, char** argv) {
     plotMarkers(goals);
     plotPath(robotPose, path);
 
-    Navigation navigation;
-    navigation.visitGoals(path);
+    visitGoals(path);
 
     while(ros::ok()) {
         ros::spinOnce();
