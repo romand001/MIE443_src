@@ -161,6 +161,9 @@ int main(int argc, char** argv) {
     plotMarkers(goals);
     plotPath(robotPose, path);
 
+    Navigation navigation;
+    navigation.visitGoals(path);
+
     while(ros::ok()) {
         ros::spinOnce();
         /***YOUR CODE HERE***/

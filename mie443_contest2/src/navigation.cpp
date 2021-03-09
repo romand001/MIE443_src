@@ -33,3 +33,10 @@ bool Navigation::moveToGoal(float xGoal, float yGoal, float phiGoal){
         return false;
     }
 }
+
+void Navigation::visitGoals(std::vector<std::vector<float>> path) {
+    moveToGoal(path[1][0], path[1][1], path[1][2] + M_1_PI);
+//    for (int i = 0; i < path.size(); i++) {
+//
+//    }
+}
