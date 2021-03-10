@@ -35,7 +35,7 @@ void ImagePipeline::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 int ImagePipeline::setTagDescriptors() {
 
     std::vector<Mat> descriptorVec;
-
+    
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create(minHessian);
 
@@ -100,10 +100,10 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         int minHessian = 400;
         Ptr<SURF> detector = SURF::create(minHessian);
 
-        std::vector<KeyPoint> keypoints;
-        Mat descriptors;
+        std::vector<KeyPoint> keypoints_scene;
+        Mat descriptors_scene;
 
-        detector->detectAndCompute(img, noArray(), keypoints, descriptors);
+        detector->detectAndCompute(img, noArray(), keypoints_scene, descriptors_scene);
 
         if(img.empty()) {
             std::cout << "Could not open or find the image!\n";
@@ -112,11 +112,11 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         std::cout << "everything good so far\n";
 
-        // Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
-        // std::vector<std::vector<DMatch> >knn_matches;
-        // matcher->knnMatch( descriptors_object, descriptors_scene, knn_matches, 2);
+        Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
+        std::vector<std::vector<DMatch> >knn_matches;
+        matcher->knnMatch( tagDescriptors[0], descriptors_scene, knn_matches, 2);
         // //--Filter matches using the Lowe's ratio test
-        // const float ratio_thresh = 0.75f;
+        const float ratio_thresh = 0.75f;
        
 
         // ////////////////////////
