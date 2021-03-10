@@ -8,6 +8,10 @@ using namespace cv::xfeatures2d;
 
 #define NUMTAGS 16 // including blank
 
+// darie's path: "/mnt/src/mie443_contest2/boxes_database"
+
+const std::string tagPath = "/mnt/src/mie443_contest2/boxes_database"; // path to tags
+
 ImagePipeline::ImagePipeline(ros::NodeHandle& n) {
     image_transport::ImageTransport it(n);
     sub = it.subscribe(IMAGE_TOPIC, 1, &ImagePipeline::imageCallback, this);
@@ -39,9 +43,11 @@ int ImagePipeline::setTagDescriptors() {
 
         std::vector<KeyPoint> keypoints;
         Mat descriptors;
-        Mat tagImg = imread("../boxes_database/tag_" + std::to_string(i+1) + ".jpg", IMREAD_GRAYSCALE);
+        std::string imgPath = tagPath + "/tag_" + std::to_string(i+1) + ".jpg";
+        Mat tagImg = imread(imgPath, IMREAD_GRAYSCALE);
         if (tagImg.empty()) {
             std::cout << "Could not open or find the image!\n";
+            std::cout << imgPath << std::endl;
             return -1;
         }
 
@@ -53,10 +59,10 @@ int ImagePipeline::setTagDescriptors() {
 
     std::vector<KeyPoint> keypoints;
     Mat descriptors;
-    Mat tagImg = imread("../boxes_database/tag_blank.jpg", IMREAD_GRAYSCALE);
+    Mat tagImg = imread(tagPath + "/tag_blank.jpg", IMREAD_GRAYSCALE);
 
     if (tagImg.empty()) {
-        std::cout << "Could not open or find the image!\n";
+        std::cout << "Could not open or find the blank tag image!\n";
         return -1;
     }
 
@@ -90,8 +96,6 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         
         // int main( int argc, char*argv[] ){
         // CommandLineParserparser( argc, argv, keys );
-
-        setTagDescriptors();
 
         int minHessian = 400;
         Ptr<SURF> detector = SURF::create(minHessian);

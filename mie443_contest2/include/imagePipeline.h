@@ -20,10 +20,10 @@ class ImagePipeline {
         bool isValid;
         image_transport::Subscriber sub;
 
-        std::vector<Mat> tagDescriptors;
+        std::vector<cv::Mat> tagDescriptors;
     public:
         ImagePipeline(ros::NodeHandle& n);
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void setTagDescriptors();
+        int setTagDescriptors();
         int getTemplateID(Boxes& boxes);
 };

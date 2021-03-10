@@ -174,7 +174,11 @@ int main(int argc, char** argv) {
     ImagePipeline imagePipeline(n);
     // Execute strategy.
 
-//    std::vector<std::vector<float>> goals = getGoals(boxes.coords);
+    if (imagePipeline.setTagDescriptors() == -1) {
+        std::cout << "could not load an image\n";
+        return -1;
+    }
+
     std::vector<std::vector<float>> path = bestPath(robotPose, boxes.coords);
 
     plotMarkers(boxes.coords);
