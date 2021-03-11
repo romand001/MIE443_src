@@ -3,6 +3,7 @@
 #include <robot_pose.h>
 #include <imagePipeline.h>
 #include <visualization_msgs/Marker.h>
+#include <nav_msgs/GetPlan.h>
 
 #include <iterator>
 #include <algorithm>
@@ -86,6 +87,41 @@ void plotPath(RobotPose robotPose, std::vector<std::vector<float>> path)
 //    return goals;
 //}
 
+bool checkGoal(ros::NodeHandle n, RobotPose robotPose, std::vector<float> goal)
+{
+
+    geometry_msgs::PoseStamped Start;
+    Start.header.seq = 0;
+    Start.header.stamp = ros::Time::now();
+    Start.header.frame_id = "map";
+    Start.pose.position.x = robotPose.x;
+    Start.pose.position.y = robotPose.y;
+    Start.pose.position.z = 0.0;
+    Start.pose.orientation.x = 0.0;
+    Start.pose.orientation.y = 0.0;
+    Start.pose.orientation.w = 1.0;
+
+    geometry_msgs::PoseStamped Goal;
+    Goal.header.seq = 0;
+    Goal.header.stamp = ros::Time::now();
+    Goal.header.frame_id = "map";
+    Goal.pose.position.x = goal[0];
+    Goal.pose.position.y = goal[1];
+    Goal.pose.position.z = 0.0;
+    Goal.pose.orientation.x = 0.0;
+    Goal.pose.orientation.y = 0.0;
+    Goal.pose.orientation.w = 1.0;
+
+    ros::ServiceClient check_path = n.serviceClient<nav_msgs::GetPlan>("/move_base/make_plan");
+    nav_msgs::GetPlan srv;
+    srv.request.start = Start;
+    srv.request.goal = Goal;
+    srv.request.tolerance = 0;
+
+    check_path.call(srv);
+    return srv.response.plan.poses.size() == 0 ? false : true;
+}
+
 std::vector<float> getGoal(float phi_offset, float goalDistance, std::vector<float> coord)
 {
     float phi = coord[2] + phi_offset;
@@ -138,16 +174,23 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
     return bestPath;
 }
 
-void visitBox(std::vector<float> boxCoords) {
+void visitBox(ros::NodeHandle n, RobotPose robotPose, std::vector<float> boxCoords) {
+
+    std::vector<float> coords;
+
     for (int i = 0; i < phi_offsets.size(); i++) {
-        std::vector<float> coords = getGoal(phi_offsets[i], goal_distances[i], boxCoords);
-        ROS_INFO("Moving to (%f, %f, %f), phi_offset %f, goal_distance %f", coords[0], coords[1], coords[2], phi_offsets[i], goal_distances[i]);
+        coords = getGoal(phi_offsets[i], goal_distances[i], boxCoords);
+        ROS_INFO("Checking goal (%f, %f, %f), phi_offset %f, goal_distance %f", 
+                 coords[0], coords[1], coords[2], phi_offsets[i], goal_distances[i]);
         plotMarkers({coords});
-        bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
-        if (success) {
-            break;
-        }
+
+        if ( checkGoal(n, robotPose, coords) ) break;
+        else ROS_INFO("Cannot reach this goal");
+
     }
+    ROS_INFO("Moving to goal (%f, %f, %f)", coords[0], coords[1], coords[2]);
+    bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
+    if (!success) ROS_INFO("Failed to reach goal :(");
 }
 
 
@@ -192,7 +235,7 @@ int main(int argc, char** argv) {
         // Use: robotPose.x, robotPose.y, robotPose.phi
 
         ROS_INFO("Moving to box index %d", box_index);
-        visitBox(path[box_index]);
+        visitBox(n, robotPose, path[box_index]);
         imagePipeline.getTemplateID(boxes);
         ros::Duration(10).sleep();
         box_index++;
