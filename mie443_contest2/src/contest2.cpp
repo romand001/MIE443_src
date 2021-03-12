@@ -7,11 +7,14 @@
 
 #include <iterator>
 #include <algorithm>
+#include <ctime>
+#include <map>
 
 ros::Publisher vis_pub;
+std::map<int16_t, std::map<int16_t, float>> node_distances;
 
 const std::vector<float> phi_offsets = {0, -M_PI/4, M_PI/4};
-const std::vector<float> goal_distances = {0.25, 0.35, 0.35};
+const std::vector<float> goal_distances = {0.2, 0.35, 0.35};
 
 void plotMarkers(std::vector<std::vector<float>> markers)
 {
@@ -131,7 +134,51 @@ std::vector<float> getGoal(float phi_offset, float goalDistance, std::vector<flo
     return goalCoord;
 }
 
-float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
+inline float saveDistance(std::vector<float> coords1, std::vector<float> coords2, int16_t box1_num, int16_t box2_num) {
+    float x_dist = coords1[0] - coords2[0];
+    float y_dist = coords1[1] - coords2[1];
+    float dist = x_dist * x_dist + y_dist * y_dist;
+    node_distances[box1_num][box2_num] = dist;
+    node_distances[box2_num][box1_num] = dist;
+    ROS_INFO("Saving distances between %d and %d", box1_num, box2_num);
+    return dist;
+}
+
+inline float getBoxesDistance(std::vector<float> coords1, std::vector<float> coords2) {
+    int16_t box1_num = coords1[3];
+    int16_t box2_num = coords2[3];
+    auto it1 = node_distances.find(box1_num);
+    if (it1 != node_distances.end()) {
+        auto it2 = it1->second.find(box2_num);
+        if (it2 != it1->second.end()) {
+            return it2->second;
+        } else {
+            return saveDistance(coords1, coords2, box1_num, box2_num);
+        }
+    } else {
+        return saveDistance(coords1, coords2, box1_num, box2_num);
+    }
+}
+
+
+inline float getRobotBoxDistance(RobotPose robotPose, std::vector<float> coords) {
+    int16_t box1_num = -1;
+    int16_t box2_num = coords[3];
+    auto it1 = node_distances.find(box1_num);
+    if (it1 != node_distances.end()) {
+        auto it2 = it1->second.find(box2_num);
+        if (it2 != it1->second.end()) {
+            return it2->second;
+        } else {
+            return saveDistance({robotPose.x, robotPose.y}, coords, box1_num, box2_num);
+        }
+    } else {
+        return saveDistance({robotPose.x, robotPose.y}, coords, box1_num, box2_num);
+    }
+}
+
+
+inline float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
 {
     int n = path.size();
     float rob_x_dist = path[0][0] - robotPose.x;
@@ -141,8 +188,7 @@ float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
     for (int i = 1; i < n; i++) {
         float x_dist = path[i][0] - path[i-1][0];
         float y_dist = path[i][1] - path[i-1][1];
-
-        length += x_dist * x_dist + y_dist + y_dist; // sqrt is too slow
+        length += x_dist * x_dist + y_dist * y_dist; // sqrt is too slow
     }
 
     return length;
@@ -156,6 +202,11 @@ bool compareVec(const std::vector<float>& v1, const std::vector<float>& v2)
 std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::vector<float>> goalCoords)
 {
     ROS_INFO("starting path search");
+    //node_distances.empty();
+    for (int i = 0; i < goalCoords.size(); i++) {
+        goalCoords[i].push_back(i);
+    }
+
     float bestLength = 99999.9;
     std::vector<std::vector<float>> bestPath;
 
@@ -184,13 +235,17 @@ void visitBox(ros::NodeHandle n, RobotPose robotPose, std::vector<float> boxCoor
                  coords[0], coords[1], coords[2], phi_offsets[i], goal_distances[i]);
         plotMarkers({coords});
 
-        if ( checkGoal(n, robotPose, coords) ) break;
+        if ( checkGoal(n, robotPose, coords) ) {
+            ROS_INFO("Moving to goal (%f, %f, %f)", coords[0], coords[1], coords[2]);
+            bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
+            if (!success) {
+                ROS_INFO("Failed to reach goal :(");
+            } else {
+                return;
+            }
+        }
         else ROS_INFO("Cannot reach this goal");
-
     }
-    ROS_INFO("Moving to goal (%f, %f, %f)", coords[0], coords[1], coords[2]);
-    bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
-    if (!success) ROS_INFO("Failed to reach goal :(");
 }
 
 
@@ -222,8 +277,17 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+//    struct timespec start_wall, end_wall;
+//    clock_gettime(CLOCK_MONOTONIC, &start_wall);
+//    std::clock_t start = clock();
     std::vector<std::vector<float>> path = bestPath(robotPose, boxes.coords);
-
+//    std::clock_t end = clock();
+//    clock_gettime(CLOCK_MONOTONIC, &end_wall);
+//    double elapsed_secs = double(end - start) / CLOCKS_PER_SEC;
+//    double clock_elapsed = (end_wall.tv_sec - start_wall.tv_sec);
+//    clock_elapsed += (end_wall.tv_nsec - start_wall.tv_nsec) / 1000000000.0;
+//    ROS_INFO("Elapsed time: %fs CPU %fs clock", elapsed_secs, clock_elapsed);
+//
     plotMarkers(boxes.coords);
     plotPath(robotPose, path);
 
