@@ -181,9 +181,17 @@ inline float getRobotBoxDistance(RobotPose robotPose, std::vector<float> coords)
 inline float pathLength(RobotPose robotPose, std::vector<std::vector<float>> path)
 {
     int n = path.size();
+    // x and y distances from robot to first goal
     float rob_x_dist = path[0][0] - robotPose.x;
     float rob_y_dist = path[0][1] - robotPose.y;
-    float length = rob_x_dist * rob_x_dist + rob_y_dist * rob_y_dist;
+
+    // x and y distances from last goal to robot (has to return)
+    float ret_x_dist = path[n-1][0] - robotPose.x;
+    float ret_y_dist = path[n-1][1] - robotPose.y;
+
+    // initialize length with starting and ending distances
+    float length = rob_x_dist * rob_x_dist + rob_y_dist * rob_y_dist
+                 + ret_x_dist * ret_x_dist + ret_y_dist * ret_y_dist;
     
     for (int i = 1; i < n; i++) {
         float x_dist = path[i][0] - path[i-1][0];
