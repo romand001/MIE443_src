@@ -14,13 +14,20 @@
 #include"opencv2/features2d.hpp"
 #include"opencv2/xfeatures2d.hpp"
 
+using namespace cv;
+using namespace cv::xfeatures2d;
+
 class ImagePipeline {
     private:
         cv::Mat img;
         bool isValid;
         image_transport::Subscriber sub;
 
+        std::vector<cv::Mat> imgTags;
+        std::vector<std::vector<KeyPoint>> tagKeypoints;
         std::vector<cv::Mat> tagDescriptors;
+        std::vector<float> tagImgAreas;
+        
     public:
         ImagePipeline(ros::NodeHandle& n);
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
