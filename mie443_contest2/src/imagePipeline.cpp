@@ -8,22 +8,23 @@ using namespace cv::xfeatures2d;
 
 #define NUMTAGS 16 // including blank
 
-std::vector<float> point1(2);
-std::vector<float> point2(2);
-std::vector<float> point3(2);
-std::vector<float> point4(2);
+// std::vector<float> point1(2);
+// std::vector<float> point2(2);
+// std::vector<float> point3(2);
+// std::vector<float> point4(2);
 
-float line_length1;
-float line_length2;
+// float line_length1;
+// float line_length2;
+
 double area;
 std::vector<double> areaVec;
-
+std::vector<double> areaDiff;
 
 // darie's path: "/mnt/src/mie443_contest2/boxes_database"
 // yaakob's path:"/home/yaakob613/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
 // Rohan's path: "/home/turtlebot/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
 
-const std::string tagPath = "/home/turtlebot/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"; // path to tags
+const std::string tagPath = "/home/yaakob613/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"; // path to tags
 
 std::vector<int> good_matches_vector;
 
@@ -79,7 +80,7 @@ int ImagePipeline::setTagDescriptors() {
 
         keypointsVec.push_back(keypoints);
 
-        localtagImgAreas.push_back(tagImg.rows*tagImg.cols);
+        localtagImgAreas.push_back(tagImg.rows*tagImg.cols); //////// fix equation
     }
 
     std::vector<KeyPoint> keypoints;
@@ -99,7 +100,7 @@ int ImagePipeline::setTagDescriptors() {
 
     descriptorVec.push_back(descriptors);
 
-    localtagImgAreas.push_back(tagImg.rows*tagImg.cols);
+    localtagImgAreas.push_back(tagImg.rows*tagImg.cols); //////fix equation
 
     tagKeypoints = keypointsVec;
 
@@ -107,7 +108,7 @@ int ImagePipeline::setTagDescriptors() {
 
     imgTags=imgTagsVec;
 
-    tagImgAreas = localtagImgAreas;
+    tagImgAreas = localtagImgAreas;    /////// fix equation 
 
     return 0;
 }
@@ -169,7 +170,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         const float ratio_thresh = 0.75f;
 
 
-       std::cout << "check 1\n";
+       //std::cout << "check 1\n";
 
         //////////////////////////
 
@@ -183,7 +184,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         }
 
 
-        std::cout << "check 2\n";
+        //std::cout << "check 2\n";
 
         ////////////////////////
         //--Draw matches
@@ -191,7 +192,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         drawMatches(imgTags[c], tagKeypoints[c], img, 
         keypoints_scene, good_matches, img_matches, Scalar::all(-1),
         Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-
+        imshow("image matches matrix",img_matches);
 
         // /////////////////////////////
 
@@ -210,7 +211,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         // /////////////////////////
 
-        std::cout << "check 4\n";
+        //std::cout << "check 4\n";
 
         Mat H =findHomography( obj, scene, RANSAC );
         //--Get the corners from the image_1 ( the object to be "detected" )
@@ -227,7 +228,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         // ////////////////////////////
 
-        std::cout << "check 5\n";
+        //std::cout << "check 5\n";
 
         //--Draw lines between the corners (the mapped object in the scene -image_2 )
         line( img_matches, scene_corners[0] +Point2f((float)imgTags[c].cols, 0),scene_corners[1] +Point2f((float)imgTags[c].cols, 0), Scalar(0, 255, 0), 4);
@@ -237,28 +238,28 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         //--Show detected matches
         //imshow("Good Matches & Object detection", img_matches);
         
-        std::cout<<"check6\n";
-       point1[0] = scene_corners[0].x + (float)imgTags[c].cols;
-       point1[1] = scene_corners[0].y;
+    //    std::cout<<"check6\n";
+    //    point1[0] = scene_corners[0].x + (float)imgTags[c].cols;
+    //    point1[1] = scene_corners[0].y;
 
-       point2[0] = scene_corners[1].x + (float)imgTags[c].cols;
-       point2[1] = scene_corners[1].y;
+    //    point2[0] = scene_corners[1].x + (float)imgTags[c].cols;
+    //    point2[1] = scene_corners[1].y;
 
-       point3[0] = scene_corners[2].x + (float)imgTags[c].cols;
-       point3[1] = scene_corners[2].y;
+    //    point3[0] = scene_corners[2].x + (float)imgTags[c].cols;
+    //    point3[1] = scene_corners[2].y;
 
-       point4[0] = scene_corners[3].x + (float)imgTags[c].cols;
-       point4[1] = scene_corners[3].y;
+    //    point4[0] = scene_corners[3].x + (float)imgTags[c].cols;
+    //    point4[1] = scene_corners[3].y;
 
-       line_length1 = pow((pow((point1[0]-point2[0]),2) + pow((point1[1]-point2[1]),2)),0.5);
-       line_length2 = pow((pow((point2[0]-point3[0]),2) + pow((point2[1]-point3[1]),2)),0.5);
+    //    line_length1 = pow((pow((point1[0]-point2[0]),2) + pow((point1[1]-point2[1]),2)),0.5);
+    //    line_length2 = pow((pow((point2[0]-point3[0]),2) + pow((point2[1]-point3[1]),2)),0.5);
 
        // pushback numerical value that represents match quality (area) into a vector 
         
         
         
          
-        area = line_length1*line_length2 ; // calc area of box 
+        area = img_matches.rows*img_matches.cols ; // calc area of box 
         std::cout<<c;
         std::cout<<"\n";
         areaVec.push_back(area/tagImgAreas[c]); // vector containing the area values for each of the tags  
@@ -286,12 +287,27 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         }
 
+        for (int j = 0; j < NUMTAGS -1; j++) {
+        areaDiff.push_back(std::abs(areaVec[j] - 1));
+        }
 
-        /* find max inside the vector we created and that will have the correct corresponding index tag
-            int     
+        //int minIndex = std::min_element(areaDiff.begin(), areaDiff.end()) - areaDiff.begin();
+        //std::cout<<minIndex+1;
+        //std::cout<<"\n";
+        //areaDiff.clear(); //clear the vector areaDiff b4 the return statement 
+        //return minIndex + 1;
 
-        int maxIndex = *std::max_element(areaVec.begin(), areaVec.end());  // find the element at which the max area occurs (i.e. best matching tag)
-        
+
+
+        int maxIndex = std::max_element(good_matches_vector.begin(), good_matches_vector.end()) - good_matches_vector.begin();
+        std::cout<<maxIndex+1;
+        std::cout<<"\n";
+        return maxIndex + 1;
+
+
+
+
+        /*        
         if(maxIndex = NUMTAGS)
             {
                 std::string tagName = "tag_blank"; 
@@ -301,17 +317,8 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
             {
                 std::string tagName = "tag_" + std::to_string(maxIndex+1);
             }
-
-
-        std::vector<pair<string,????>> template_id;  ////template_id is classified as an int above???
-
-        template_id.push_back(std::make_pair(tagName,coords???));
-                    
-                    // vector containing pairs made of tags that have  been  found (tag  names) as  well  as  their 
-                    // respective coordinate index in the order that they have been found for evaluation
-            
-        */ 
-
+        
+        */
 
     }  
     template_id = 0;
