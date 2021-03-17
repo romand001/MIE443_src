@@ -14,7 +14,7 @@ ros::Publisher vis_pub;
 std::map<int16_t, std::map<int16_t, float>> node_distances;
 
 const std::vector<float> phi_offsets = {0, -M_PI/4, M_PI/4};
-const std::vector<float> goal_distances = {0.2, 0.35, 0.35};
+const std::vector<float> goal_distances = {0.3, 0.35, 0.35};
 
 void plotMarkers(std::vector<std::vector<float>> markers)
 {

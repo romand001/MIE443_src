@@ -23,10 +23,9 @@ class ImagePipeline {
         bool isValid;
         image_transport::Subscriber sub;
 
-        std::vector<cv::Mat> imgTags;
+        std::vector<cv::Mat> tagImgs;
         std::vector<std::vector<KeyPoint>> tagKeypoints;
         std::vector<cv::Mat> tagDescriptors;
-        std::vector<float> tagImgAreas;
         
     public:
         ImagePipeline(ros::NodeHandle& n);

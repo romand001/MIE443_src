@@ -22,7 +22,7 @@ using namespace cv::xfeatures2d;
 // yaakob's path:"/home/yaakob613/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
 // Rohan's path: "/home/turtlebot/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
 
-const std::string tagPath = "/home/yaakob613/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"; // path to tags
+const std::string tagPath = "/mnt/src/mie443_contest2/boxes_database"; // path to tags
 
 std::vector<int> good_matches_vector;
 
@@ -48,11 +48,6 @@ void ImagePipeline::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 
 int ImagePipeline::setTagDescriptors() {
 
-    std::vector<std::vector<KeyPoint>> keypointsVec;
-    std::vector<Mat> descriptorVec;
-    std::vector<Mat> imgTagsVec;
-    std::vector<float> localtagImgAreas;
-
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create(minHessian);
 
@@ -68,17 +63,13 @@ int ImagePipeline::setTagDescriptors() {
             return -1;
         }
 
-       
+        tagImgs.push_back(tagImg);
 
         detector->detectAndCompute(tagImg, noArray(), keypoints, descriptors);
 
-        descriptorVec.push_back(descriptors);
+        tagDescriptors.push_back(descriptors);
 
-        imgTagsVec.push_back(tagImg);
-
-        keypointsVec.push_back(keypoints);
-
-        localtagImgAreas.push_back(tagImg.rows*tagImg.cols);
+        tagKeypoints.push_back(keypoints);
     }
 
     std::vector<KeyPoint> keypoints;
@@ -90,23 +81,13 @@ int ImagePipeline::setTagDescriptors() {
         return -1;
     }
 
-    imgTagsVec.push_back(tagImg);
+    tagImgs.push_back(tagImg);
 
     detector->detectAndCompute(tagImg, noArray(), keypoints, descriptors);
 
-    keypointsVec.push_back(keypoints);
+    tagKeypoints.push_back(keypoints);
 
-    descriptorVec.push_back(descriptors);
-
-    localtagImgAreas.push_back(tagImg.rows*tagImg.cols); 
-
-    tagKeypoints = keypointsVec;
-
-    tagDescriptors = descriptorVec;
-
-    imgTags = imgTagsVec;
-
-    tagImgAreas = localtagImgAreas;    
+    tagDescriptors.push_back(descriptors);
 
     return 0;
 }
@@ -195,6 +176,9 @@ double polygonArea(std::vector<Point2f> vecPoint)
 ////////////////////////////////////////////////////////////////////
 
 int ImagePipeline::getTemplateID(Boxes& boxes) {
+
+    std::vector<double> areas;
+
     if(!isValid) {
         std::cout << "ERROR:INVALID IMAGE!" << std::endl;
         return -1;
@@ -207,7 +191,6 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         return -1;
 
     } else {
-        std::vector<double> areaDiff;
 
         int minHessian = 400;
         Ptr<SURF> detector = SURF::create(minHessian);
@@ -255,10 +238,9 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
             ////////////////////////
             //--Draw matches
             Mat img_matches;
-            drawMatches(imgTags[c], tagKeypoints[c], img, 
+            drawMatches(tagImgs[c], tagKeypoints[c], img, 
                         keypoints_scene, good_matches, img_matches, Scalar::all(-1),
                         Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-            imshow("image matches matrix",img_matches);
 
             // /////////////////////////////
 
@@ -279,9 +261,9 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
             //--Get the corners from the image_1 ( the object to be "detected" )
             std::vector<Point2f> obj_corners(4);
             obj_corners[0] = Point2f(0, 0);
-            obj_corners[1] = Point2f((float)imgTags[c].cols, 0);
-            obj_corners[2] = Point2f((float)imgTags[c].cols, (float)imgTags[c].rows);
-            obj_corners[3] = Point2f(0, (float)imgTags[c].rows);
+            obj_corners[1] = Point2f((float)tagImgs[c].cols, 0);
+            obj_corners[2] = Point2f((float)tagImgs[c].cols, (float)tagImgs[c].rows);
+            obj_corners[3] = Point2f(0, (float)tagImgs[c].rows);
 
             std::vector<Point2f> scene_corners(4);
             if (!H.empty()) {
@@ -289,19 +271,19 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                 perspectiveTransform(obj_corners, scene_corners, H);
 
                 //--Draw lines between the corners (the mapped object in the scene -image_2 )
-                line(img_matches, scene_corners[0] + Point2f((float)imgTags[c].cols, 0), scene_corners[1] + Point2f((float)imgTags[c].cols, 0), Scalar(0, 255, 0), 4);
-                line(img_matches, scene_corners[1] + Point2f((float)imgTags[c].cols, 0), scene_corners[2] + Point2f((float)imgTags[c].cols, 0), Scalar( 255, 0, 0), 4);
-                line(img_matches, scene_corners[2] + Point2f((float)imgTags[c].cols, 0), scene_corners[3] + Point2f((float)imgTags[c].cols, 0), Scalar( 0, 0, 255), 4);
-                line(img_matches, scene_corners[3] + Point2f((float)imgTags[c].cols, 0), scene_corners[0] + Point2f((float)imgTags[c].cols, 0), Scalar( 255, 0, 255), 4);
+                line(img_matches, scene_corners[0] + Point2f((float)tagImgs[c].cols, 0), scene_corners[1] + Point2f((float)tagImgs[c].cols, 0), Scalar(0, 255, 0), 4);
+                line(img_matches, scene_corners[1] + Point2f((float)tagImgs[c].cols, 0), scene_corners[2] + Point2f((float)tagImgs[c].cols, 0), Scalar( 255, 0, 0), 4);
+                line(img_matches, scene_corners[2] + Point2f((float)tagImgs[c].cols, 0), scene_corners[3] + Point2f((float)tagImgs[c].cols, 0), Scalar( 0, 0, 255), 4);
+                line(img_matches, scene_corners[3] + Point2f((float)tagImgs[c].cols, 0), scene_corners[0] + Point2f((float)tagImgs[c].cols, 0), Scalar( 255, 0, 255), 4);
                 //--Show detected matches
-                // imshow("Good Matches & Object detection", img_matches);
-                // waitKey(5000);
+                imshow("Good Matches & Object detection", img_matches);
+                waitKey(7000);
 
                 ///////////////////////////////////////// 
-                Point2f point1 = Point2f(scene_corners[0].x + imgTags[c].cols, scene_corners[0].y);
-                Point2f point2 = Point2f(scene_corners[1].x + imgTags[c].cols, scene_corners[1].y);
-                Point2f point3 = Point2f(scene_corners[2].x + imgTags[c].cols, scene_corners[2].y);
-                Point2f point4 = Point2f(scene_corners[3].x + imgTags[c].cols, scene_corners[3].y);
+                Point2f point1 = Point2f(scene_corners[0].x + tagImgs[c].cols, scene_corners[0].y);
+                Point2f point2 = Point2f(scene_corners[1].x + tagImgs[c].cols, scene_corners[1].y);
+                Point2f point3 = Point2f(scene_corners[2].x + tagImgs[c].cols, scene_corners[2].y);
+                Point2f point4 = Point2f(scene_corners[3].x + tagImgs[c].cols, scene_corners[3].y);
 
                 std::vector<Point2f> vecPoints;
                 // The main function that returns true if line segment 'p1q1' 
@@ -318,44 +300,33 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                     vecPoints = {point1, point3, point4, point2};
                 } 
                 else {
-                    areaDiff.push_back(-1);
                     continue;
                 }
                         
                 // pushback numerical value that represents match quality (area) into a vector 
                 double area = polygonArea(vecPoints);
-
-
-                std::cout<<c;
-                std::cout<<"\n";
-                areaDiff.push_back(std::abs(area / tagImgAreas[c] - 1)); // vector containing the area values for each of the tags  
-                std::cout<<area/tagImgAreas[c];
-                std::cout<<"\n";
-                //cv::imshow("view", img);
-                //cv::waitKey(10);
+                areas.push_back(area);
+                std::cout << "area for template " << c << " is " << area << std::endl;
             
 
                 good_matches_vector.push_back(good_matches.size());
-                std::cout<< good_matches_vector[c];
-                std::cout<<"\n";
+
             }
             
             else {
-                areaDiff.push_back(0);
+                std::cout << "homography matrix is empty\n";
                 good_matches_vector.push_back(good_matches.size());
-
-                std::cout<<"Homography filter loop\n";
-                std::cout<<"\n";
-                std::cout<<good_matches.size();
+                std::cout << "good matches: " << good_matches.size() << std::endl;
             }
 
         }
 
 
-        int minIndex = (int) (std::min_element(areaDiff.begin(), areaDiff.end()) - areaDiff.begin());
-        std::cout<<minIndex+1;
-        std::cout<<"\n";
-        return minIndex + 1;
+        // int minIndex = (int) (std::min_element(areaDiff.begin(), areaDiff.end()) - areaDiff.begin());
+        // std::cout<<minIndex+1;
+        // std::cout<<"\n";
+        // return minIndex + 1;
+        return -1;
 
 
 
