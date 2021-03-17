@@ -8,14 +8,7 @@ using namespace cv::xfeatures2d;
 #define IMAGE_TOPIC "camera/rgb/image_raw" // kinect:"camera/rgb/image_raw" webcam:"camera/image"
 
 #define NUMTAGS 16 // including blank
-
-// std::vector<float> point1(2);
-// std::vector<float> point2(2);
-// std::vector<float> point3(2);
-// std::vector<float> point4(2);
-
-// float line_length1;
-// float line_length2;
+#define GOALAREA 300000
 
 
 // darie's path: "/mnt/src/mie443_contest2/boxes_database"
@@ -177,7 +170,9 @@ double polygonArea(std::vector<Point2f> vecPoint)
 
 int ImagePipeline::getTemplateID(Boxes& boxes) {
 
-    std::vector<double> areas;
+    ros::spinOnce();
+
+    std::vector<double> areaError;
 
     if(!isValid) {
         std::cout << "ERROR:INVALID IMAGE!" << std::endl;
@@ -192,7 +187,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
     } else {
 
-        int minHessian = 400;
+        int minHessian = 200;
         Ptr<SURF> detector = SURF::create(minHessian);
 
         std::vector<KeyPoint> keypoints_scene;
@@ -277,7 +272,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                 line(img_matches, scene_corners[3] + Point2f((float)tagImgs[c].cols, 0), scene_corners[0] + Point2f((float)tagImgs[c].cols, 0), Scalar( 255, 0, 255), 4);
                 //--Show detected matches
                 imshow("Good Matches & Object detection", img_matches);
-                waitKey(7000);
+                waitKey(3000);
 
                 ///////////////////////////////////////// 
                 Point2f point1 = Point2f(scene_corners[0].x + tagImgs[c].cols, scene_corners[0].y);
@@ -300,13 +295,15 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                     vecPoints = {point1, point3, point4, point2};
                 } 
                 else {
+                    std::cout << "no intersection\n";
+                    areaError.push_back(99999999.0);
                     continue;
                 }
                         
                 // pushback numerical value that represents match quality (area) into a vector 
                 double area = polygonArea(vecPoints);
-                areas.push_back(area);
-                std::cout << "area for template " << c << " is " << area << std::endl;
+                areaError.push_back(std::abs(area - GOALAREA));
+                std::cout << "area for template " << c + 1 << " is " << area << std::endl;
             
 
                 good_matches_vector.push_back(good_matches.size());
@@ -314,6 +311,9 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
             }
             
             else {
+
+                areaError.push_back(99999999.0);
+
                 std::cout << "homography matrix is empty\n";
                 good_matches_vector.push_back(good_matches.size());
                 std::cout << "good matches: " << good_matches.size() << std::endl;
@@ -322,11 +322,9 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
         }
 
 
-        // int minIndex = (int) (std::min_element(areaDiff.begin(), areaDiff.end()) - areaDiff.begin());
-        // std::cout<<minIndex+1;
-        // std::cout<<"\n";
-        // return minIndex + 1;
-        return -1;
+        int minIndex = (int) (std::min_element(areaError.begin(), areaError.end()) - areaError.begin());
+        std::cout << "the tag closest to goal area is " << minIndex + 1 << std::endl;
+        return minIndex;
 
 
 
