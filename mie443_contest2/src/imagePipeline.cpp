@@ -271,8 +271,8 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                 line(img_matches, scene_corners[2] + Point2f((float)tagImgs[c].cols, 0), scene_corners[3] + Point2f((float)tagImgs[c].cols, 0), Scalar( 0, 0, 255), 4);
                 line(img_matches, scene_corners[3] + Point2f((float)tagImgs[c].cols, 0), scene_corners[0] + Point2f((float)tagImgs[c].cols, 0), Scalar( 255, 0, 255), 4);
                 //--Show detected matches
-                imshow("Good Matches & Object detection", img_matches);
-                waitKey(3000);
+                //imshow("Good Matches & Object detection", img_matches);
+                //waitKey(3000);
 
                 ///////////////////////////////////////// 
                 Point2f point1 = Point2f(scene_corners[0].x + tagImgs[c].cols, scene_corners[0].y);
@@ -295,7 +295,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                     vecPoints = {point1, point3, point4, point2};
                 } 
                 else {
-                    std::cout << "no intersection\n";
+                    //std::cout << "no intersection\n";
                     areaError.push_back(99999999.0);
                     continue;
                 }
@@ -303,7 +303,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
                 // pushback numerical value that represents match quality (area) into a vector 
                 double area = polygonArea(vecPoints);
                 areaError.push_back(std::abs(area - GOALAREA));
-                std::cout << "area for template " << c + 1 << " is " << area << std::endl;
+                //std::cout << "area for template " << c + 1 << " is " << area << std::endl;
             
 
                 good_matches_vector.push_back(good_matches.size());
@@ -314,9 +314,9 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
                 areaError.push_back(99999999.0);
 
-                std::cout << "homography matrix is empty\n";
+                //std::cout << "homography matrix is empty\n";
                 good_matches_vector.push_back(good_matches.size());
-                std::cout << "good matches: " << good_matches.size() << std::endl;
+                //std::cout << "good matches: " << good_matches.size() << std::endl;
             }
 
         }
@@ -324,7 +324,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         int minIndex = (int) (std::min_element(areaError.begin(), areaError.end()) - areaError.begin());
         std::cout << "the tag closest to goal area is " << minIndex + 1 << std::endl;
-        return minIndex;
+        return minIndex + 1;
 
 
 

@@ -9,12 +9,39 @@
 #include <algorithm>
 #include <ctime>
 #include <map>
+#include <fstream>
 
 ros::Publisher vis_pub;
 std::map<int16_t, std::map<int16_t, float>> node_distances;
 
-const std::vector<float> phi_offsets = {0, -M_PI/8, M_PI/8, -M_PI/6, M_PI/6, -M_PI/4, M_PI/4};
-const std::vector<float> goal_distances = {0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35};
+// pairs of <angle_offset, distance_offset> for the goals, relative to the box
+const std::vector<std::pair<float, float>> goalOffsets = {
+    std::make_pair(0.0, 0.35),
+    std::make_pair(0.0, 0.30),
+    std::make_pair(0.0, 0.40),
+
+    std::make_pair(-M_PI/8, 0.35),
+    std::make_pair(M_PI/8, 0.35),
+    std::make_pair(-M_PI/8, 0.30),
+    std::make_pair(M_PI/8, 0.30),
+    std::make_pair(-M_PI/8, 0.40),
+    std::make_pair(M_PI/8, 0.40),
+
+    std::make_pair(-M_PI/6, 0.35),
+    std::make_pair(M_PI/6, 0.35),
+    std::make_pair(-M_PI/6, 0.30),
+    std::make_pair(M_PI/6, 0.30),
+    std::make_pair(-M_PI/6, 0.40),
+    std::make_pair(M_PI/6, 0.40),
+
+    std::make_pair(-M_PI/4, 0.35),
+    std::make_pair(M_PI/4, 0.35),
+    std::make_pair(-M_PI/4, 0.30),
+    std::make_pair(M_PI/4, 0.30),
+    std::make_pair(-M_PI/4, 0.40),
+    std::make_pair(M_PI/4, 0.40),
+    
+};
 
 void plotMarkers(std::vector<std::vector<float>> markers)
 {
@@ -233,27 +260,31 @@ std::vector<std::vector<float>> bestPath(RobotPose robotPose, std::vector<std::v
     return bestPath;
 }
 
-void visitBox(ros::NodeHandle n, RobotPose robotPose, std::vector<float> boxCoords) {
+bool visitBox(ros::NodeHandle n, RobotPose robotPose, std::vector<float> boxCoords) {
 
-    std::vector<float> coords;
+    std::vector<float> goalCoord;
 
-    for (int i = 0; i < phi_offsets.size(); i++) {
-        coords = getGoal(phi_offsets[i], goal_distances[i], boxCoords);
-        ROS_INFO("Checking goal (%f, %f, %f), phi_offset %f, goal_distance %f", 
-                 coords[0], coords[1], coords[2], phi_offsets[i], goal_distances[i]);
-        plotMarkers({coords});
+    for (int i = 0; i < goalOffsets.size(); i++) {
+        goalCoord = getGoal(goalOffsets[i].first, goalOffsets[i].second, boxCoords);
+        // ROS_INFO("Checking goal (%f, %f, %f), phi_offset %f, goal_distance %f", 
+        //          goalCoord[0], goalCoord[1], goalCoord[2], goalOffsets[i].first, goalOffsets[i].second);
+        plotMarkers({goalCoord});
 
-        if ( checkGoal(n, robotPose, coords) ) {
-            ROS_INFO("Moving to goal (%f, %f, %f)", coords[0], coords[1], coords[2]);
-            bool success = Navigation::moveToGoal(coords[0], coords[1], coords[2]);
+        if ( checkGoal(n, robotPose, goalCoord) ) {
+            ROS_INFO("Moving to goal (%f, %f, %f)", goalCoord[0], goalCoord[1], goalCoord[2]);
+            bool success = Navigation::moveToGoal(goalCoord[0], goalCoord[1], goalCoord[2]);
             if (!success) {
                 ROS_INFO("Failed to reach goal :(");
             } else {
-                return;
+                return true;
             }
         }
         else ROS_INFO("Cannot reach this goal");
     }
+
+    ROS_WARN("Could not find a suitable location to approach box");
+    return false;
+
 }
 
 
@@ -299,18 +330,43 @@ int main(int argc, char** argv) {
     plotMarkers(boxes.coords);
     plotPath(robotPose, path);
 
+    std::vector<int> tagsFound;
+
+    std::ofstream outputFile ("/home/output_team_25.txt");
+
     int box_index = 0;
     while(ros::ok() && box_index < path.size()) {
         ros::spinOnce();
-        /***YOUR CODE HERE***/
-        // Use: boxes.coords
-        // Use: robotPose.x, robotPose.y, robotPose.phi
 
-        ROS_INFO("Moving to box index %d", box_index);
-        visitBox(n, robotPose, path[box_index]);
-        imagePipeline.getTemplateID(boxes);
-        ros::Duration(10).sleep();
+        ROS_INFO("Moving to box #%d", box_index + 1);
+
+        // visit next box and check if successful
+        if ( visitBox(n, robotPose, path[box_index]) ) {
+
+            int tagID = imagePipeline.getTemplateID(boxes); // determine tag number of this box
+            
+            // check if tag has already been found
+            std::string duplicateStr = "false";
+            if ( std::count(tagsFound.begin(), tagsFound.end(), tagID) ) duplicateStr = "true";
+
+            // try to open file, write into it if possible
+            if (outputFile.is_open()) {
+
+                outputFile << "Tag: " << tagID << "\t";
+                outputFile << "Location: (" << path[box_index][0] << ", " << path[box_index][1] << ", " << path[box_index][2] << ")\t";
+                outputFile << "Duplicate: " << duplicateStr << std::endl;
+
+            }
+            else ROS_ERROR("could not open output file for writing!");
+
+            tagsFound.push_back(tagID);
+
+
+            //ros::Duration(10).sleep(); // REMEMBER TO REMOVE THIS!!!
+        }
+
         box_index++;
+        
     }
     return 0;
 }
