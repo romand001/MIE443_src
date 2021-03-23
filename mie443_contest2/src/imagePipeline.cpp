@@ -11,11 +11,7 @@ using namespace cv::xfeatures2d;
 #define GOALAREA 300000 // area used to get area error
 #define MAXERROR 250000 // if lowest error is bigger than this, image is blank
 
-
-// darie's path: "/mnt/src/mie443_contest2/boxes_database"
-// yaakob's path:"/home/yaakob613/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
-// Rohan's path: "/home/turtlebot/catkin_ws/src/MIE443_src/mie443_contest2/boxes_database"
-
+// Modify file path string
 const std::string tagPath = "/mnt/src/mie443_contest2/boxes_database"; // path to tags
 
 std::vector<int> good_matches_vector;
