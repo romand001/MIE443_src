@@ -6,10 +6,6 @@ o Darie Roman 1002902736
   Migjun Yang 1003317859
   Rohan Ramdoss 1003219233
 
-o Run the following to run the code:    
-contest2.cpp
+o Run the following command in the terminal: rosrun mie443_contest2 contest2
 
-o Modify the file path string found on line 15 of
-imagePipeline.cpp
-
-o The output file will be stored at: /home
+o The output file will be stored in the package folder as output_team_25.txt

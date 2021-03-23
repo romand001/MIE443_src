@@ -40,7 +40,7 @@ void ImagePipeline::imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 
 int ImagePipeline::setTagDescriptors() {
 
-    int minHessian = 400;
+    int minHessian = 800;
     Ptr<SURF> detector = SURF::create(minHessian);
 
     for (int i = 0; i < NUMTAGS - 1; i++) {
@@ -186,7 +186,7 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
     } else {
 
-        int minHessian = 200;
+        int minHessian = 800;
         Ptr<SURF> detector = SURF::create(minHessian);
 
         std::vector<KeyPoint> keypoints_scene;
