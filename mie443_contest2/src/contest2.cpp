@@ -352,7 +352,9 @@ int main(int argc, char** argv) {
             // try to open file, write into it if possible
             if (outputFile.is_open()) {
 
-                outputFile << "Tag: " << tagID << "\t";
+                if (tagID == -1) outputFile << "Tag: blank\t";
+                else outputFile << "Tag: " << tagID << "\t";
+                
                 outputFile << "Location: (" << path[box_index][0] << ", " << path[box_index][1] << ", " << path[box_index][2] << ")\t";
                 outputFile << "Duplicate: " << duplicateStr << std::endl;
 

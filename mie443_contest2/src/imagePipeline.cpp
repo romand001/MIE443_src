@@ -8,7 +8,8 @@ using namespace cv::xfeatures2d;
 #define IMAGE_TOPIC "camera/rgb/image_raw" // kinect:"camera/rgb/image_raw" webcam:"camera/image"
 
 #define NUMTAGS 16 // including blank
-#define GOALAREA 300000
+#define GOALAREA 300000 // area used to get area error
+#define MAXERROR 250000 // if lowest error is bigger than this, image is blank
 
 
 // darie's path: "/mnt/src/mie443_contest2/boxes_database"
@@ -321,33 +322,15 @@ int ImagePipeline::getTemplateID(Boxes& boxes) {
 
         }
 
-
         int minIndex = (int) (std::min_element(areaError.begin(), areaError.end()) - areaError.begin());
+
+        if (areaError[minIndex] > MAXERROR) {
+            std::cout << "high area error, image is blank";
+            return -1;
+        }
+        
         std::cout << "the tag closest to goal area is " << minIndex + 1 << std::endl;
         return minIndex + 1;
-
-
-
-            // int maxIndex = std::max_element(good_matches_vector.begin(), good_matches_vector.end()) - good_matches_vector.begin();
-            // std::cout<<maxIndex+1;
-            // std::cout<<"\n";
-            // return maxIndex + 1;
-
-
-
-
-            /*        
-            if(minIndex = NUMTAGS)
-                {
-                    std::string tagName = "tag_blank"; 
-                }
-
-            else()
-                {
-                    std::string tagName = "tag_" + std::to_string(maxIndex+1);
-                }
-            
-            */
 
     }  
 }
