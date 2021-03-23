@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <ctime>
 #include <map>
+#include <ros/package.h>
 #include <fstream>
 
 ros::Publisher vis_pub;
@@ -332,7 +333,8 @@ int main(int argc, char** argv) {
 
     std::vector<int> tagsFound;
 
-    std::ofstream outputFile ("/home/output_team_25.txt");
+    std::string packagePath = ros::package::getPath("mie443_contest2");
+    std::ofstream outputFile (packagePath + "/output_team_25.txt");
 
     int box_index = 0;
     while(ros::ok() && box_index < path.size()) {

@@ -1,5 +1,6 @@
 #include <imagePipeline.h>
 #include <bits/stdc++.h>
+#include <ros/package.h>
 
 using namespace cv;
 using namespace cv::xfeatures2d;
@@ -12,7 +13,8 @@ using namespace cv::xfeatures2d;
 #define MAXERROR 250000 // if lowest error is bigger than this, image is blank
 
 // Modify file path string
-const std::string tagPath = "/mnt/src/mie443_contest2/boxes_database"; // path to tags
+std::string packagePath = ros::package::getPath("mie443_contest2");
+std::string tagPath = packagePath + "/boxes_database";
 
 std::vector<int> good_matches_vector;
 
