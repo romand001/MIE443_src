@@ -1,5 +1,6 @@
 <launch>
   <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+  <param name="/move_base/NavfnROS/allow_unknown" value="true"/>
 
   <!-- 3D sensor -->
   <arg name="3d_sensor" default="$(env TURTLEBOT_3D_SENSOR)"/>

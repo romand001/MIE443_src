@@ -67,6 +67,10 @@ public:
   void start();
   void stop();
 
+  geometry_msgs::Point_<std::allocator<void>> getPosition();
+
+  
+
 private:
   /**
    * @brief  Make a global plan
@@ -90,14 +94,18 @@ private:
   ros::Publisher marker_array_publisher_;
   tf::TransformListener tf_listener_;
 
-  Costmap2DClient costmap_client_;
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
-      move_base_client_;
+  
   frontier_exploration::FrontierSearch search_;
   ros::Timer exploring_timer_;
   ros::Timer oneshot_;
 
   std::vector<geometry_msgs::Point> frontier_blacklist_;
+
+  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
+      move_base_client_;
+
+  Costmap2DClient costmap_client_;
+
   geometry_msgs::Point prev_goal_;
   double prev_distance_;
   ros::Time last_progress_;

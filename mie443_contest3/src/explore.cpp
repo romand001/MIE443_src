@@ -58,6 +58,7 @@ Explore::Explore()
   , prev_distance_(0)
   , last_markers_count_(0)
 {
+    std::cout << "start of explore constructor\n";
   double timeout;
   double min_frontier_size;
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
@@ -73,6 +74,8 @@ Explore::Explore()
                                                  potential_scale_, gain_scale_,
                                                  min_frontier_size);
 
+    std::cout << "middle of explore constructor\n";
+
   if (visualize_) {
     marker_array_publisher_ =
         private_nh_.advertise<visualization_msgs::MarkerArray>("frontiers", 10);
@@ -85,6 +88,7 @@ Explore::Explore()
   exploring_timer_ =
       relative_nh_.createTimer(ros::Duration(1. / planner_frequency_),
                                [this](const ros::TimerEvent&) { makePlan(); });
+
 }
 
 Explore::~Explore()
@@ -290,6 +294,11 @@ void Explore::stop()
   move_base_client_.cancelAllGoals();
   exploring_timer_.stop();
   ROS_INFO("Exploration stopped.");
+}
+
+geometry_msgs::Point_<std::allocator<void>> Explore::getPosition()
+{
+    return costmap_client_.getRobotPose().position;
 }
 
 }  // namespace explore
