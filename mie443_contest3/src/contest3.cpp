@@ -43,28 +43,32 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg)
     //pub_pose2d.publish(current_pose);
 }
 
+// void timerCallback(const ros::TimerEvent &event) 
+// {
+    
+// }
+
 void spinAround() 
 {
 
-    std::cout << "spinning around\n";
+    std::cout << "spinning around... ";
 
-    double tolerance = 0.1;
-
-    double initial_theta = current_pose.theta;
+    double initialTime = ros::Time::now().toSec();
 
     do {
+        
         geometry_msgs::Twist move;
-        move.angular.z = 0.5;
+        move.angular.z = 1.0;
         vel_pub.publish(move);
-
         ros::spinOnce();
-        ros::Duration(0.1).sleep();
+        ros::Duration(0.01).sleep();
+    } while (ros::Time::now().toSec() - initialTime < 2 * M_PI);
 
-    } while (ros::ok() && abs(current_pose.theta - initial_theta) < tolerance);
+    geometry_msgs::Twist stop;
+    stop.angular.z = 0.0;
+    vel_pub.publish(stop);
 
-    geometry_msgs::Twist move;
-    move.angular.z = 0.0;
-    vel_pub.publish(move);
+    std::cout << "done.\n";
 
 }
 
@@ -80,8 +84,8 @@ int main(int argc, char** argv)
     ros::Subscriber odom_sub = n.subscribe("odom", 1, odomCallback);
     vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
 
-    // movement
-    // actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> move_base_client("move_base");
+    //motion checking thread
+    // ros::Timer motionTimer = n.createTimer(ros::Duration(5.0), &timerCallback);
 
     //
     // Frontier exploration algorithm.
@@ -96,19 +100,19 @@ int main(int argc, char** argv)
     
     double dt = 5.0; // # of seconds to wait before spinning
     double travel_thresh = 0.02; // min travel distance to see if robot moved
-    double prevTime = ros::Time::now().toSec();
 
     auto prevPos = explore.getPosition();
 
     explore.stop();
     spinAround();
     explore.start();
+
+    double prevTime = ros::Time::now().toSec();
     while(ros::ok()) {
 
         // code to run every dt seconds
         double curTime = ros::Time::now().toSec();
         if (curTime - prevTime > dt) {
-            prevTime = curTime;
 
             // get distance travelled
             auto curPos = explore.getPosition();
@@ -119,8 +123,12 @@ int main(int argc, char** argv)
 
             if (travelled < travel_thresh) {
                 std::cout << "robot stuck? only travelled " << travelled << " in past " << dt << " seconds...\n";
+                explore.stop();
                 spinAround();
+                explore.start();
             }
+
+            prevTime = ros::Time::now().toSec();
 
         }
 
