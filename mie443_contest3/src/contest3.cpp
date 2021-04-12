@@ -48,6 +48,7 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg)
     
 // }
 
+// spin 360 degrees
 void spinAround() 
 {
 
@@ -56,8 +57,8 @@ void spinAround()
     double initialTime = ros::Time::now().toSec();
 
     do {
-        
         geometry_msgs::Twist move;
+        move.linear.x = 0.05;
         move.angular.z = 1.0;
         vel_pub.publish(move);
         ros::spinOnce();
@@ -66,6 +67,30 @@ void spinAround()
 
     geometry_msgs::Twist stop;
     stop.angular.z = 0.0;
+    vel_pub.publish(stop);
+
+    std::cout << "done.\n";
+
+}
+
+// move forward ~ 1 metre
+void moveForward() 
+{
+
+    std::cout << "moving forward... ";
+
+    double initialTime = ros::Time::now().toSec();
+
+    do {
+        geometry_msgs::Twist move;
+        move.linear.x = 0.5;
+        vel_pub.publish(move);
+        ros::spinOnce();
+        ros::Duration(0.01).sleep();
+    } while (ros::Time::now().toSec() - initialTime < 2);
+
+    geometry_msgs::Twist stop;
+    stop.linear.x = 0.0;
     vel_pub.publish(stop);
 
     std::cout << "done.\n";
@@ -98,10 +123,11 @@ int main(int argc, char** argv)
     std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
     // sc.playWave(path_to_sounds + "sound.wav");
     
-    double dt = 5.0; // # of seconds to wait before spinning
+    double dt = 10.0; // # of seconds to wait before spinning
     double travel_thresh = 0.02; // min travel distance to see if robot moved
+    int spinCount = 0; // counter for number of consecutive spins
 
-    auto prevPos = explore.getPosition();
+    auto prevPos = explore.getPose();
 
     explore.stop();
     spinAround();
@@ -114,18 +140,30 @@ int main(int argc, char** argv)
         double curTime = ros::Time::now().toSec();
         if (curTime - prevTime > dt) {
 
-            // get distance travelled
-            auto curPos = explore.getPosition();
-            double travelled = sqrt(pow(curPos.x - prevPos.x, 2) 
-                                  + pow(curPos.y - prevPos.y, 2));
+            // get distance travelled, including rotation
+            auto curPos = explore.getPose();
+            double travelled = sqrt(pow(curPos.position.x - prevPos.position.x, 2) 
+                                  + pow(curPos.position.y - prevPos.position.y, 2)
+                                  + pow(curPos.orientation.z - prevPos.orientation.z, 2));
 
-            prevPos = explore.getPosition();
+            prevPos = explore.getPose();
 
             if (travelled < travel_thresh) {
+                spinCount ++; // increment number of consecutive spins
                 std::cout << "robot stuck? only travelled " << travelled << " in past " << dt << " seconds...\n";
                 explore.stop();
                 spinAround();
                 explore.start();
+            }
+            else spinCount = 0; // reset consecutive spins
+
+            // if robot tried to get unstuck by spinning 3 times in a row
+            if (spinCount >= 3) {
+                spinCount = 0; // reset
+                explore.stop();
+                moveForward(); // move forward 1 metre
+                explore.start();
+
             }
 
             prevTime = ros::Time::now().toSec();

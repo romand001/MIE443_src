@@ -67,9 +67,7 @@ public:
   void start();
   void stop();
 
-  geometry_msgs::Point_<std::allocator<void>> getPosition();
-
-  
+  geometry_msgs::Pose getPose();
 
 private:
   /**

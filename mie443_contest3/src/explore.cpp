@@ -296,9 +296,9 @@ void Explore::stop()
   ROS_INFO("Exploration stopped.");
 }
 
-geometry_msgs::Point_<std::allocator<void>> Explore::getPosition()
+geometry_msgs::Pose Explore::getPose()
 {
-    return costmap_client_.getRobotPose().position;
+    return costmap_client_.getRobotPose();
 }
 
 }  // namespace explore
