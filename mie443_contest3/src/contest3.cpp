@@ -17,9 +17,158 @@ geometry_msgs::Pose2D current_pose;
 //ros::Publisher pub_pose2d;
 ros::Publisher vel_pub;
 
+
+// move forward
+void moveForward(double speed, double distance) 
+{
+
+    //std::cout << "moving forward... ";
+
+    double duration = distance / speed;
+
+    double initialTime = ros::Time::now().toSec();
+
+    do {
+        geometry_msgs::Twist move;
+        move.linear.x = speed;
+        vel_pub.publish(move);
+        ros::spinOnce();
+        ros::Duration(0.01).sleep();
+    } while (ros::Time::now().toSec() - initialTime < duration);
+
+    geometry_msgs::Twist stop;
+    stop.linear.x = 0.0;
+    vel_pub.publish(stop);
+
+    //std::cout << "done.\n";
+
+}
+
+// spin in circle
+void rotate(double speed, double angle)
+{
+    //std::cout << "rotating on the spot... ";
+
+    double initialTime = ros::Time::now().toSec();
+
+    double duration = angle / speed;
+
+    do {
+        geometry_msgs::Twist move;
+        move.angular.z = speed;
+        vel_pub.publish(move);
+        ros::spinOnce();
+        ros::Duration(0.01).sleep();
+    } while (ros::Time::now().toSec() - initialTime < duration);
+
+    geometry_msgs::Twist stop;
+    stop.angular.z = 0.0;
+    vel_pub.publish(stop);
+
+    //std::cout << "done.\n";
+}
+
+// spin 360 degrees
+void moveSmallCircle(double angSpeed, double linSpeed, double angle) 
+{
+
+    std::cout << "moving in circle... ";
+
+    double initialTime = ros::Time::now().toSec();
+
+    double duration = angle / angSpeed;
+
+    do {
+        geometry_msgs::Twist move;
+        move.linear.x = linSpeed;
+        move.angular.z = angSpeed;
+        vel_pub.publish(move);
+        ros::spinOnce();
+        ros::Duration(0.01).sleep();
+    } while (ros::Time::now().toSec() - initialTime < duration);
+
+    geometry_msgs::Twist stop;
+    stop.linear.x = 0.0;
+    stop.angular.z = 0.0;
+    vel_pub.publish(stop);
+
+    std::cout << "done.\n";
+
+}
+
+
+// example movement function, makes robot drive in a square
+void emotEXMovement()
+{
+    double lineSpeed = 0.5; double turnSpeed = 1.0;
+    std::cout << "moving in square shape...";
+    moveForward(lineSpeed, 0.2); // move forward 0.2 m at lineSpeed m/s
+    rotate(turnSpeed, M_PI_2); // turn pi/2 rad at turnSpeed rad/s
+    moveForward(lineSpeed, 0.2); // move forward 0.2 m at lineSpeed m/s
+    rotate(turnSpeed, M_PI_2); // turn pi/2 rad at turnSpeed rad/s
+    moveForward(lineSpeed, 0.2); // move forward 0.2 m at lineSpeed m/s
+    rotate(turnSpeed, M_PI_2); // turn pi/2 rad at turnSpeed rad/s
+    moveForward(lineSpeed, 0.2); // move forward 0.2 m at lineSpeed m/s
+    rotate(turnSpeed, M_PI_2); // turn pi/2 rad at turnSpeed rad/s
+    std::cout << " done\n";
+}
+
+// gets called with result from emotion classifier (vote out of 10)
 void emotionCallback(const std_msgs::Int32::ConstPtr& msg) 
 {
-    std::cout << "Emotion: " << msg->data << std::endl;
+    std::cout << "Emotion: " << (int)msg->data << std::endl;
+    // msg->data is a number from 0-6 corresponding to the emotion,
+    // check on piazza for which emotion is which
+
+    // implement behaviour for each emotion below
+    // currently all emotions have an example movement
+
+    switch((int)msg->data) {
+        case 0:
+            // behaviour for emotion 0:
+
+            emotEXMovement();
+
+        break;
+        case 1:
+            // behaviour for emotion 1:
+
+            emotEXMovement();
+
+        break;
+        case 2:
+            // behaviour for emotion 2:
+
+            emotEXMovement();
+
+        break;
+        case 3:
+            // behaviour for emotion 3:
+
+            emotEXMovement();
+
+        break;
+        case 4:
+            // behaviour for emotion 4:
+
+            emotEXMovement();
+
+        break;
+        case 5:
+            // behaviour for emotion 5:
+
+            emotEXMovement();
+
+        break;
+        case 6:
+            // behaviour for emotion 6:
+
+            emotEXMovement();
+
+        break;
+
+    }
+
 }
 
 void odomCallback(const nav_msgs::OdometryConstPtr& msg)
@@ -48,54 +197,6 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg)
     
 // }
 
-// spin 360 degrees
-void spinAround() 
-{
-
-    std::cout << "spinning around... ";
-
-    double initialTime = ros::Time::now().toSec();
-
-    do {
-        geometry_msgs::Twist move;
-        move.linear.x = 0.05;
-        move.angular.z = 1.0;
-        vel_pub.publish(move);
-        ros::spinOnce();
-        ros::Duration(0.01).sleep();
-    } while (ros::Time::now().toSec() - initialTime < 2 * M_PI);
-
-    geometry_msgs::Twist stop;
-    stop.angular.z = 0.0;
-    vel_pub.publish(stop);
-
-    std::cout << "done.\n";
-
-}
-
-// move forward ~ 1 metre
-void moveForward() 
-{
-
-    std::cout << "moving forward... ";
-
-    double initialTime = ros::Time::now().toSec();
-
-    do {
-        geometry_msgs::Twist move;
-        move.linear.x = 0.5;
-        vel_pub.publish(move);
-        ros::spinOnce();
-        ros::Duration(0.01).sleep();
-    } while (ros::Time::now().toSec() - initialTime < 2);
-
-    geometry_msgs::Twist stop;
-    stop.linear.x = 0.0;
-    vel_pub.publish(stop);
-
-    std::cout << "done.\n";
-
-}
 
 int main(int argc, char** argv) 
 {
@@ -124,13 +225,13 @@ int main(int argc, char** argv)
     // sc.playWave(path_to_sounds + "sound.wav");
     
     double dt = 10.0; // # of seconds to wait before spinning
-    double travel_thresh = 0.02; // min travel distance to see if robot moved
+    double travel_thresh = 0.05; // min travel distance to see if robot moved
     int spinCount = 0; // counter for number of consecutive spins
 
     auto prevPos = explore.getPose();
 
     explore.stop();
-    spinAround();
+    moveSmallCircle(1.0, 0.05, 2*M_PI);
     explore.start();
 
     double prevTime = ros::Time::now().toSec();
@@ -152,7 +253,7 @@ int main(int argc, char** argv)
                 spinCount ++; // increment number of consecutive spins
                 std::cout << "robot stuck? only travelled " << travelled << " in past " << dt << " seconds...\n";
                 explore.stop();
-                spinAround();
+                moveSmallCircle(1.0, 0.05, 2*M_PI);
                 explore.start();
             }
             else spinCount = 0; // reset consecutive spins
@@ -161,7 +262,7 @@ int main(int argc, char** argv)
             if (spinCount >= 3) {
                 spinCount = 0; // reset
                 explore.stop();
-                moveForward(); // move forward 1 metre
+                moveForward(0.25, 1.0); // move forward 1 metre
                 explore.start();
 
             }
