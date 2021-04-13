@@ -13,8 +13,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Int32.h>
 
-geometry_msgs::Pose2D current_pose;
-//ros::Publisher pub_pose2d;
+
 ros::Publisher vel_pub;
 
 
@@ -171,32 +170,6 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
 
 }
 
-void odomCallback(const nav_msgs::OdometryConstPtr& msg)
-{
-    // linear position
-    current_pose.x = msg->pose.pose.position.x;
-    current_pose.y = msg->pose.pose.position.y;
-    
-    // quaternion to RPY conversion
-    tf::Quaternion q(
-        msg->pose.pose.orientation.x,
-        msg->pose.pose.orientation.y,
-        msg->pose.pose.orientation.z,
-        msg->pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    
-    // angular position
-    current_pose.theta = yaw;
-    //pub_pose2d.publish(current_pose);
-}
-
-// void timerCallback(const ros::TimerEvent &event) 
-// {
-    
-// }
-
 
 int main(int argc, char** argv) 
 {
@@ -207,7 +180,6 @@ int main(int argc, char** argv)
 
     // subscribers and publishers
     ros::Subscriber emotion_sub = n.subscribe("/detected_emotion", 1, &emotionCallback);
-    ros::Subscriber odom_sub = n.subscribe("odom", 1, odomCallback);
     vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
 
     //motion checking thread
