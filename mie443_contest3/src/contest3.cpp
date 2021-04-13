@@ -15,7 +15,7 @@
 
 
 ros::Publisher vel_pub;
-
+explore::Explore * global_explore;
 
 // move forward
 void moveForward(double speed, double distance) 
@@ -112,6 +112,82 @@ void emotEXMovement()
     std::cout << " done\n";
 }
 
+void emotDiscontentMovement() // agitated partial turns
+{
+    std::cout << "doing discontent motion...";
+    double turnSpeed = 2.0;
+    rotate(turnSpeed, M_PI/6);
+    for (int i = 0; i < 2; i++) {
+        rotate(-turnSpeed, -M_PI/3);
+        rotate(turnSpeed, M_PI/3);
+    }
+    rotate(-turnSpeed, -M_PI/6);
+    std::cout << " done\n";
+}
+
+void emotSurpriseMovement() // fast back, slow forwards
+{
+    std::cout << "doing surprise motion...";
+    moveForward(-1, -0.2);
+    moveForward(0.2, 0.2);
+    std::cout << " done\n";
+}
+
+void emotSadMovement() // slow forwards
+{
+    std::cout << "doing sad motion...";
+    moveForward(0.1, 0.1);
+    std::cout << " done\n";
+}
+
+void emotRageMovement() // fast forwards, then forward/back jitter
+{
+    std::cout << "doing rage motion...";
+    double lineSpeed = 0.5;
+    moveForward(1, 0.2);
+    for (int i = 0; i < 2; i++) {
+        moveForward(-lineSpeed, -0.1);
+        moveForward(lineSpeed, 0.1);
+    }
+    moveForward(-lineSpeed, -0.1);
+    std::cout << " done\n";
+}
+
+void emotExcitedMovement() // 2 full spins
+{
+    std::cout << "doing excitement motion...";
+    double turnSpeed = 4.0;
+    rotate(turnSpeed, M_PI*2);
+    rotate(-turnSpeed, -M_PI*2);
+    std::cout << " done\n";
+}
+
+void emotProudMovement() // forward motion
+{
+    std::cout << "doing pride motion...";
+    moveForward(0.25, 0.1);
+    std::cout << " done\n";
+}
+
+void emotFearMovement() // foward and back motion, but turn when going back to show urgency
+{
+    std::cout << "doing fear motion...";
+    double lineSpeed = 1; double turnSpeed = 2.0;
+    for (int i = 0; i < 2; i++) {
+        rotate(turnSpeed, M_PI);
+        moveForward(lineSpeed, 0.2);
+        rotate(turnSpeed, M_PI);
+        moveForward(lineSpeed, 0.2);
+    }
+    std::cout << " done\n";
+}
+
+void secondaryDelay() {
+    std::cout << "waiting for 3 seconds...";
+    ros::Duration(3).sleep();
+    std::cout << " done\n";
+}
+
 // gets called with result from emotion classifier (vote out of 10)
 void emotionCallback(const std_msgs::Int32::ConstPtr& msg) 
 {
@@ -121,53 +197,53 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
 
     // implement behaviour for each emotion below
     // currently all emotions have an example movement
-
+    global_explore->stop();
     switch((int)msg->data) {
         case 0:
-            // behaviour for emotion 0:
-
-            emotEXMovement();
+            // behaviour for emotion 0: angry
+            secondaryDelay();
+            emotDiscontentMovement();
 
         break;
         case 1:
-            // behaviour for emotion 1:
+            // behaviour for emotion 1: disgust
 
-            emotEXMovement();
+            emotSurpriseMovement();
 
         break;
         case 2:
-            // behaviour for emotion 2:
-
-            emotEXMovement();
+            // behaviour for emotion 2: fear
+            secondaryDelay();
+            emotSadMovement();
 
         break;
         case 3:
-            // behaviour for emotion 3:
+            // behaviour for emotion 3: happy
 
-            emotEXMovement();
+            emotRageMovement();
 
         break;
         case 4:
-            // behaviour for emotion 4:
-
-            emotEXMovement();
+            // behaviour for emotion 4: sad
+            secondaryDelay();
+            emotExcitedMovement();
 
         break;
         case 5:
-            // behaviour for emotion 5:
-
-            emotEXMovement();
+            // behaviour for emotion 5: surprise
+            secondaryDelay();
+            emotProudMovement();
 
         break;
         case 6:
-            // behaviour for emotion 6:
-
-            emotEXMovement();
+            // behaviour for emotion 6: neutral
+            secondaryDelay();
+            emotFearMovement();
 
         break;
 
     }
-
+    global_explore->start();
 }
 
 
@@ -188,6 +264,7 @@ int main(int argc, char** argv)
     //
     // Frontier exploration algorithm.
     explore::Explore explore;
+    global_explore = &explore;
     //
     // Class to handle sounds.
     sound_play::SoundClient sc;
@@ -204,6 +281,22 @@ int main(int argc, char** argv)
 
     explore.stop();
     moveSmallCircle(1.0, 0.05, 2*M_PI);
+    ros::Duration(3).sleep();
+    emotDiscontentMovement();
+    ros::Duration(3).sleep();
+    emotSurpriseMovement();
+    ros::Duration(3).sleep();
+    emotSadMovement();
+    ros::Duration(3).sleep();
+    emotRageMovement();
+    ros::Duration(3).sleep();
+    emotExcitedMovement();
+    ros::Duration(3).sleep();
+    emotProudMovement();
+    ros::Duration(3).sleep();
+    emotFearMovement();
+    ros::Duration(3).sleep();
+    return 0;
     explore.start();
 
     double prevTime = ros::Time::now().toSec();
