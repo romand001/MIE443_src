@@ -69,6 +69,8 @@ public:
 
   geometry_msgs::Pose getPose();
 
+  bool resetIfBlacklisted();
+
 private:
   /**
    * @brief  Make a global plan

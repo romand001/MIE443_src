@@ -312,6 +312,9 @@ int main(int argc, char** argv)
                 spinCount = 0; // reset
                 explore.stop();
                 moveForward(0.25, 1.0); // move forward 1 metre
+                if ( explore.resetIfBlacklisted() ) {
+                    std::cout << "emptied blacklist!\n";
+                }
                 explore.start();
 
             }

@@ -301,6 +301,21 @@ geometry_msgs::Pose Explore::getPose()
     return costmap_client_.getRobotPose();
 }
 
+bool Explore::resetIfBlacklisted() 
+{
+    // find frontiers
+    auto pose = costmap_client_.getRobotPose();
+    auto frontiers = search_.searchFrom(pose.position);
+
+    if (frontiers.size() != 0 && 
+        frontiers.size() == frontier_blacklist_.size()) {
+        frontier_blacklist_.clear();
+        return true;
+    }
+    return false;
+
+}
+
 }  // namespace explore
 
 // int main(int argc, char** argv)
