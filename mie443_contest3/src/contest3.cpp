@@ -17,6 +17,8 @@
 ros::Publisher vel_pub;
 explore::Explore * global_explore;
 
+int victims_found;
+
 // move forward
 void moveForward(double speed, double distance) 
 {
@@ -192,6 +194,9 @@ void secondaryDelay() {
 void emotionCallback(const std_msgs::Int32::ConstPtr& msg) 
 {
     std::cout << "Emotion: " << (int)msg->data << std::endl;
+
+    victims_found ++; // increment number of victims found so far
+
     // msg->data is a number from 0-6 corresponding to the emotion,
     // check on piazza for which emotion is which
 
@@ -277,6 +282,8 @@ int main(int argc, char** argv)
     double travel_thresh = 0.05; // min travel distance to see if robot moved
     int spinCount = 0; // counter for number of consecutive spins
 
+    victims_found = 0; // number of victims found so far
+
     auto prevPos = explore.getPose();
 
     explore.stop();
@@ -299,6 +306,13 @@ int main(int argc, char** argv)
             prevPos = explore.getPose();
 
             if (travelled < travel_thresh) {
+
+                // check if we are done
+                if (victims_found == 7) {
+                    std::cout << "All victims have been helped!\nexiting...";
+                    return 0;
+                }
+
                 spinCount ++; // increment number of consecutive spins
                 std::cout << "robot stuck? only travelled " << travelled << " in past " << dt << " seconds...\n";
                 explore.stop();
@@ -312,7 +326,7 @@ int main(int argc, char** argv)
                 spinCount = 0; // reset
                 explore.stop();
                 moveForward(0.25, 1.0); // move forward 1 metre
-                if ( explore.resetIfBlacklisted() ) {
+                if ( victims_found < 7 && explore.resetIfBlacklisted() ) {
                     std::cout << "emptied blacklist!\n";
                 }
                 explore.start();
