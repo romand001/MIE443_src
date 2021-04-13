@@ -281,22 +281,6 @@ int main(int argc, char** argv)
 
     explore.stop();
     moveSmallCircle(1.0, 0.05, 2*M_PI);
-    ros::Duration(3).sleep();
-    emotDiscontentMovement();
-    ros::Duration(3).sleep();
-    emotSurpriseMovement();
-    ros::Duration(3).sleep();
-    emotSadMovement();
-    ros::Duration(3).sleep();
-    emotRageMovement();
-    ros::Duration(3).sleep();
-    emotExcitedMovement();
-    ros::Duration(3).sleep();
-    emotProudMovement();
-    ros::Duration(3).sleep();
-    emotFearMovement();
-    ros::Duration(3).sleep();
-    return 0;
     explore.start();
 
     double prevTime = ros::Time::now().toSec();
