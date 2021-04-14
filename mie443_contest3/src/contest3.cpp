@@ -303,8 +303,6 @@ int main(int argc, char** argv)
                                   + pow(curPos.position.y - prevPos.position.y, 2)
                                   + pow(curPos.orientation.z - prevPos.orientation.z, 2));
 
-            prevPos = explore.getPose();
-
             if (travelled < travel_thresh) {
 
                 // check if we are done
@@ -333,6 +331,7 @@ int main(int argc, char** argv)
 
             }
 
+            prevPos = explore.getPose();
             prevTime = ros::Time::now().toSec();
 
         }
