@@ -16,9 +16,9 @@
 
 ros::Publisher vel_pub;
 explore::Explore * global_explore;
+sound_play::SoundClient * sc;
 
 std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
-sound_play::SoundClient sc;
 int victims_found;
 
 // move forward
@@ -209,51 +209,51 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 0:
             // behaviour for emotion 0: angry
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to vicitm Anger - Discontent (Secondary).wav");
+            sc->playWave(path_to_sounds + "Response to vicitm Anger - Discontent (Secondary).wav");
             emotDiscontentMovement();
-
+            ros::Duration(10).sleep();
         break;
         case 1:
             // behaviour for emotion 1: disgust
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Disgust - Suprise (primary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Disgust - Suprise (primary).wav");
             emotSurpriseMovement();
-
+            ros::Duration(9).sleep();
         break;
         case 2:
             // behaviour for emotion 2: fear
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Fear - Sad (Primary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Fear - Sad (Primary).wav");
             emotSadMovement();
-
+            ros::Duration(9).sleep();
         break;
         case 3:
             // behaviour for emotion 3: happy
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Happy - Rage (Primary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Happy - Rage (Primary).wav");
             emotRageMovement();
-
+            ros::Duration(9).sleep();
         break;
         case 4:
             // behaviour for emotion 4: sad
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Sad - Excited (Secondary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Sad - Excited (Secondary).wav");
             emotExcitedMovement();
-
+            ros::Duration(12).sleep();
         break;
         case 5:
             // behaviour for emotion 5: surprise
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Surprise - Pride (Secondary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Surprise - Pride (Secondary).wav");
             emotProudMovement();
-
+            ros::Duration(20).sleep();
         break;
         case 6:
             // behaviour for emotion 6: neutral
             secondaryDelay();
-            sc.playWave(path_to_sounds + "Response to victim Neutral - Fear (Secondary).wav");
+            sc->playWave(path_to_sounds + "Response to victim Neutral - Fear (Secondary).wav");
             emotFearMovement();
-
+            ros::Duration(12).sleep();
         break;
 
     }
@@ -281,11 +281,13 @@ int main(int argc, char** argv)
     global_explore = &explore;
     //
     // Class to handle sounds.
+    sound_play::SoundClient sound_client;
+    sc = &sound_client;
     //sound_play::SoundClient sc;
     //
     // The code below shows how to play a sound.
     //std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
-    // sc.playWave(path_to_sounds + "sound.wav");
+    // sc->playWave(path_to_sounds + "sound.wav");
     
     double dt = 10.0; // # of seconds to wait before spinning
     double travel_thresh = 0.05; // min travel distance to see if robot moved
