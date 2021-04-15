@@ -17,6 +17,9 @@
 ros::Publisher vel_pub;
 explore::Explore * global_explore;
 
+std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
+sound_play::SoundClient sc;
+
 // move forward
 void moveForward(double speed, double distance) 
 {
@@ -202,42 +205,49 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 0:
             // behaviour for emotion 0: angry
             secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to vicitm Anger - Discontent (Secondary).wav");
             emotDiscontentMovement();
 
         break;
         case 1:
             // behaviour for emotion 1: disgust
-
+            secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Disgust - Suprise (primary).wav");
             emotSurpriseMovement();
 
         break;
         case 2:
             // behaviour for emotion 2: fear
             secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Fear - Sad (Primary).wav");
             emotSadMovement();
 
         break;
         case 3:
             // behaviour for emotion 3: happy
-
+            secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Happy - Rage (Primary).wav");
             emotRageMovement();
 
         break;
         case 4:
             // behaviour for emotion 4: sad
             secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Sad - Excited (Secondary).wav");
             emotExcitedMovement();
 
         break;
         case 5:
             // behaviour for emotion 5: surprise
             secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Surprise - Pride (Secondary).wav");
             emotProudMovement();
 
         break;
         case 6:
             // behaviour for emotion 6: neutral
             secondaryDelay();
+            sc.playWave(path_to_sounds + "Response to victim Neutral - Fear (Secondary).wav");
             emotFearMovement();
 
         break;
@@ -267,10 +277,10 @@ int main(int argc, char** argv)
     global_explore = &explore;
     //
     // Class to handle sounds.
-    sound_play::SoundClient sc;
+    //sound_play::SoundClient sc;
     //
     // The code below shows how to play a sound.
-    std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
+    //std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
     // sc.playWave(path_to_sounds + "sound.wav");
     
     double dt = 10.0; // # of seconds to wait before spinning
