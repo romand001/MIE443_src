@@ -1,6 +1,16 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include "explore.h"
+#include <opencv2/core.hpp>
+#include <cv.h>
+#include <cv_bridge/cv_bridge.h>
+#include <highgui.h>
+#include"opencv2/features2d.hpp"
+#include"opencv2/xfeatures2d.hpp"
+#include"opencv2/calib3d.hpp"
+#include"opencv2/highgui.hpp"
+#include"opencv2/imgproc.hpp"
+
 //
 // If you cannot find the sound play library try the following command.
 // sudo apt install ros-kinetic-sound-play
@@ -13,12 +23,15 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Int32.h>
 
+using namespace cv;
+using namespace cv::xfeatures2d;
 
 ros::Publisher vel_pub;
 explore::Explore * global_explore;
 sound_play::SoundClient * sc;
 
 std::string path_to_sounds = ros::package::getPath("mie443_contest3") + "/sounds/";
+std::string path_to_images = ros::package::getPath("mie443_contest3") + "/images/";
 int victims_found;
 
 // move forward
@@ -99,6 +112,16 @@ void moveSmallCircle(double angSpeed, double linSpeed, double angle)
 
 }
 
+void emotionImageShow(char imageName)
+{
+    Mat img = imread(path_to_images + imageName + ".jpg", IMREAD_COLOR);
+    if(img.empty())
+    {
+        std::cout << "Could not read image:" << path_to_images << std::endl;
+    }
+    imshow("Display Window", img);
+    waitKey(3000);
+}
 
 // example movement function, makes robot drive in a square
 void emotEXMovement()
@@ -209,6 +232,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 0:
             // behaviour for emotion 0: angry
             secondaryDelay();
+            emotionImageShow('Discontent_Image');
             sc->playWave(path_to_sounds + "Response to vicitm Anger - Discontent (Secondary).wav");
             emotDiscontentMovement();
             ros::Duration(10).sleep();
@@ -216,6 +240,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 1:
             // behaviour for emotion 1: disgust
             secondaryDelay();
+            emotionImageShow('Surprise_Image');
             sc->playWave(path_to_sounds + "Response to victim Disgust - Suprise (primary).wav");
             emotSurpriseMovement();
             ros::Duration(9).sleep();
@@ -223,6 +248,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 2:
             // behaviour for emotion 2: fear
             secondaryDelay();
+            emotionImageShow('Sad_Image');
             sc->playWave(path_to_sounds + "Response to victim Fear - Sad (Primary).wav");
             emotSadMovement();
             ros::Duration(9).sleep();
@@ -230,6 +256,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 3:
             // behaviour for emotion 3: happy
             secondaryDelay();
+            emotionImageShow('Rage_Image');
             sc->playWave(path_to_sounds + "Response to victim Happy - Rage (Primary).wav");
             emotRageMovement();
             ros::Duration(9).sleep();
@@ -237,6 +264,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 4:
             // behaviour for emotion 4: sad
             secondaryDelay();
+            emotionImageShow('Excited_Image');
             sc->playWave(path_to_sounds + "Response to victim Sad - Excited (Secondary).wav");
             emotExcitedMovement();
             ros::Duration(12).sleep();
@@ -244,6 +272,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 5:
             // behaviour for emotion 5: surprise
             secondaryDelay();
+            emotionImageShow('Pride_Image');
             sc->playWave(path_to_sounds + "Response to victim Surprise - Pride (Secondary).wav");
             emotProudMovement();
             ros::Duration(20).sleep();
@@ -251,6 +280,7 @@ void emotionCallback(const std_msgs::Int32::ConstPtr& msg)
         case 6:
             // behaviour for emotion 6: neutral
             secondaryDelay();
+            emotionImageShow('Fear_Image');
             sc->playWave(path_to_sounds + "Response to victim Neutral - Fear (Secondary).wav");
             emotFearMovement();
             ros::Duration(12).sleep();
